@@ -2,14 +2,16 @@ cmake_minimum_required(VERSION 3.10)
 
 project(gifview)
 
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED True)
 
 # extra warnings
 add_compile_options(-Wall -Wextra)
 
 set(srcs
-    "src/main.cpp"
+    "src/main.c"
+    "src/gif.c"
+    "src/util.c"
 )
 add_executable(${PROJECT_NAME} ${srcs})
 
