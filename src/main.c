@@ -20,16 +20,66 @@
 
 #include "gif.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
+#define SDL_MAIN_HANDLED    1
 #include <SDL2/SDL.h>
+#undef SDL_MAIN_HANDLED
 
 
-int main(int argc, char const *argv[])
+/* Create an SDL_Surface based on GIF data. */
+SDL_Surface *mk_SDLSurface_from_GIFImage(struct GIF gif)
 {
-#if 0
+    struct GIF_Image image = gif.graphics->img;
+    SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormatFrom(
+        image.data.image,
+        image.width, image.height,
+        8,
+        image.width,
+        SDL_PIXELFORMAT_INDEX8);
+
+    size_t colorcount = gif.lsd.gct_size;
+    uint8_t *table = gif.lsd.color_table;
+    if (image.lct_flag)
+    {
+        colorcount = image.lct_size;
+        table = image.color_table;
+    }
+
+    SDL_Color *colors = malloc(sizeof(SDL_Color) * colorcount);
+    for (size_t i = 0; i < colorcount; ++i)
+    {
+        colors[i].r = table[(3*i)+0];
+        colors[i].g = table[(3*i)+1];
+        colors[i].b = table[(3*i)+2];
+        colors[i].a = 255;
+    }
+    if (SDL_SetPaletteColors(surface->format->palette, colors, 0, colorcount) != 0)
+    {
+        fputs("palette set fail", stderr);
+        exit(EXIT_FAILURE);
+    }
+    free(colors);
+    return surface;
+}
+
+
+int main(int argc, char *argv[])
+{
+    if (argc != 2)
+    {
+        fprintf(stderr, "No filename given!\n");
+        exit(EXIT_FAILURE);
+    }
+    char const *const filename = argv[1];
+
+    GIF gif = load_gif_from_file(filename);
+
     SDL_Init(SDL_INIT_VIDEO);
+
+    SDL_Surface *gifimage = mk_SDLSurface_from_GIFImage(gif);
 
     SDL_Window *window = SDL_CreateWindow(
         "GIF View",
@@ -51,6 +101,7 @@ int main(int argc, char const *argv[])
         {
             SDL_LogError(0, "ERROR SDL_FillRect: %s\n", SDL_GetError());
         }
+        SDL_BlitSurface(gifimage, NULL, screen, NULL);
         SDL_FreeSurface(screen);
         if (SDL_UpdateWindowSurface(window) != 0)
         {
@@ -69,88 +120,8 @@ int main(int argc, char const *argv[])
     }
 
     SDL_DestroyWindow(window);
+    SDL_FreeSurface(gifimage);
     SDL_Quit();
-#endif // 0
-
-    if (argc != 2)
-    {
-        fprintf(stderr, "No filename given!\n");
-        exit(EXIT_FAILURE);
-    }
-    char const *const filename = argv[1];
-
-    GIF gif = load_gif_from_file(filename);
-
-    switch (gif.version)
-    {
-    case GIF_Version_87a:
-        puts("GIF Version 87a");
-        break;
-    case GIF_Version_89a:
-        puts("GIF Version 89a");
-        break;
-
-    default:
-        puts("Unknown GIF Version");
-        break;
-    }
-
-    printf("%dx%d\n", gif.lsd.width, gif.lsd.height);
-    printf("GCT? %s\n", gif.lsd.gct_flag? "yes" : "no");
-    printf("color resolution: %d\n", gif.lsd.color_resolution);
-    printf("sorted? %s\n", gif.lsd.sort_flag? "yes" : "no");
-    printf("GCT size: %lu\n", gif.lsd.gct_size);
-    puts("");
-
-    for (
-        struct GIF_Graphic *graphic = gif.graphics;
-        graphic != NULL;
-        graphic = graphic->next)
-    {
-        puts("graphic:");
-        if (graphic->has_extension)
-        {
-            struct GIF_GraphicExt const *const ext = &graphic->extension;
-            puts(" ext:");
-            char const *disposal_str = "???";
-            switch (ext->disposal_method)
-            {
-            case GIF_DisposalMethod_DoNotDispose:
-                disposal_str = "do not dispose";
-                break;
-            case GIF_DisposalMethod_None:
-                disposal_str = "none";
-                break;
-            case GIF_DisposalMethod_RestoreBackground:
-                disposal_str = "restore background";
-                break;
-            case GIF_DisposalMethod_RestorePrevious:
-                disposal_str = "restore previous";
-                break;
-            case GIF_DisposalMethod_Undefined:
-                disposal_str = "undefined";
-                break;
-            }
-            printf("  disposal method: %s\n", disposal_str);
-            printf("  user input? %s\n", ext->user_input_flag? "yes" : "no");
-            printf("  transparent color? %s\n", ext->transparent_color_flag? "yes" : "no");
-            printf("  delay time: %d\n", ext->delay_time);
-            printf("  transparent color idx: %d\n", ext->transparent_color_idx);
-        }
-        if (graphic->is_img)
-        {
-            struct GIF_Image const *const i = &graphic->img;
-            printf(" %d,%d  %dx%d\n", i->left, i->right, i->width, i->height);
-            printf(" LCT? %s\n", i->lct_flag? "yes" : "no");
-            printf(" interlaced? %s\n", i->interlace_flag? "yes" : "no");
-            printf(" sorted? %s\n", i->sort_flag? "yes" : "no");
-            printf(" LCT size: %lu\n", i->lct_size);
-        }
-        else
-        {
-            puts(" plaintext:");
-        }
-    }
 
     return EXIT_SUCCESS;
 }
