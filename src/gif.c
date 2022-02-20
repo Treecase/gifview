@@ -132,18 +132,18 @@ void read_header(FILE *file, enum Version *version)
 /* Read SIZE*3 bytes of Color Table data from FILE, storing it in TABLE.
  * Memory pointed to by TABLE must be freed.
  */
-void read_color_table(FILE *file, size_t size, uint8_t *table)
+void read_color_table(FILE *file, size_t size, uint8_t **table)
 {
     /* allocate the table buffer */
     errno = 0;
-    table = malloc(3 * size);
-    if (table == NULL)
+    *table = malloc(3 * size);
+    if (*table == NULL)
     {
         perror("malloc");
         exit(EXIT_FAILURE);
     }
     /* read the table data */
-    if (safe_fread(table, 3, size, file))   exit(EXIT_FAILURE);
+    if (safe_fread(*table, 3, size, file))   exit(EXIT_FAILURE);
 }
 
 /* Read a Logical Screen Descriptor from FILE, storing the data in LSD. */
@@ -168,7 +168,7 @@ void read_logical_screen_descriptor(FILE *file, struct GIF_LSD *lsd)
     /* get the Global Color Table, if it exists */
     if (lsd->gct_flag)
     {
-        read_color_table(file, lsd->gct_size, lsd->color_table);
+        read_color_table(file, lsd->gct_size, &lsd->color_table);
     }
     else
     {
@@ -203,7 +203,7 @@ void read_image_descriptor(FILE *file, struct GIF_Image *image)
     /* get the Local Color Table */
     if (image->lct_flag)
     {
-        read_color_table(file, image->lct_size, image->color_table);
+        read_color_table(file, image->lct_size, &image->color_table);
         free(image->color_table);
     }
     else
