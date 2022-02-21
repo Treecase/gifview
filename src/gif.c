@@ -18,6 +18,7 @@
  */
 
 #include "gif.h"
+#include "lzw.h"
 #include "util.h"
 
 #include <errno.h>
@@ -180,7 +181,10 @@ void read_logical_screen_descriptor(FILE *file, struct GIF_LSD *lsd)
 void read_image_data(FILE *file, struct GIF_ImageData *image)
 {
     if (safe_fread(&image->min_code_size, 1, 1, file)) exit(EXIT_FAILURE);
-    read_data_sub_blocks(file, &image->image_size, &image->image);
+    uint8_t *compressed = NULL;
+    size_t compressed_size = 0;
+    read_data_sub_blocks(file, &compressed_size, &compressed);
+    image->image_size = unlzw(image->min_code_size, compressed, &image->image);
 }
 
 /* Fill IMAGE with Image Descriptor data read from FILE. */

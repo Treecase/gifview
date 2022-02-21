@@ -12,8 +12,9 @@ set(srcs
     "src/main.c"
     "src/gif.c"
     "src/util.c"
+    "src/lzw.c"
 )
 add_executable(${PROJECT_NAME} ${srcs})
 
 # link SDL2
-target_link_libraries(${PROJECT_NAME} -lSDL2)
+target_link_libraries(${PROJECT_NAME} SDL2)
