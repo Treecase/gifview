@@ -184,7 +184,10 @@ size_t unlzw(size_t min_code_size, uint8_t const *in, uint8_t **out)
 LZW_done:
     for (size_t i = 0; i < next; ++i)
     {
-        free(table[i].data);
+        if (i != cc && i != eoi)
+        {
+            free(table[i].data);
+        }
     }
     *out = output.data;
     return output.size;

@@ -22,9 +22,22 @@
 
 #include <stdio.h>
 
-/* Error checked wrapper around `fread` */
+/* Linked List node. */
+typedef struct LinkedList
+{
+    void *data;
+    struct LinkedList *next;
+} LinkedList;
+
+/* Allocate a new LinkedList node containing DATA. */
+LinkedList *linkedlist_new(void *data);
+
+/* Append END to the linked list pointed to by HEAD. */
+void linkedlist_append(LinkedList **head, LinkedList *end);
+
+/* Error checked wrapper around `fread`.  Returns 0 on success, or the value of
+ * errno on failure. */
 int safe_fread(void *restrict ptr, size_t size, size_t n,
                FILE *restrict stream);
-
 
 #endif  // GIFVIEW_UTIL_H

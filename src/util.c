@@ -21,11 +21,33 @@
 
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 
-/* Error checked wrapper around `fread`.  Returns 0 on success, or the value of
- * errno on failure. */
+LinkedList *linkedlist_new(void *data)
+{
+    LinkedList *new = malloc(sizeof(LinkedList));
+    new->data = data;
+    new->next = NULL;
+    return new;
+}
+
+void linkedlist_append(LinkedList **head, LinkedList *end)
+{
+    if (*head == NULL)
+    {
+        *head = end;
+        return;
+    }
+    LinkedList *curr = *head;
+    while (curr->next != NULL)
+    {
+        curr = curr->next;
+    }
+    curr->next = end;
+}
+
 int safe_fread(void *restrict ptr, size_t size, size_t n, FILE *restrict stream)
 {
     int e = 0;

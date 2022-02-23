@@ -20,6 +20,8 @@
 #ifndef GIFVIEW_GIF_H
 #define GIFVIEW_GIF_H
 
+#include "util.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -33,6 +35,14 @@ enum Version
     GIF_Version_89a,
 };
 
+/* GIF Color Table */
+struct GIF_ColorTable
+{
+    bool sorted;
+    size_t size;
+    uint8_t *colors;
+};
+
 /* GIF logical screen descriptor */
 struct GIF_LSD
 {
@@ -42,10 +52,7 @@ struct GIF_LSD
     uint8_t color_resolution;
     uint8_t pixel_aspect_ratio;
 
-    bool gct_flag;
-    bool sort_flag;
-    size_t gct_size;
-    uint8_t *color_table;
+    struct GIF_ColorTable *color_table;
 };
 
 /* GIF Table-Based Image data */
@@ -62,10 +69,7 @@ struct GIF_Image
     uint16_t left, right, width, height;
     bool interlace_flag;
 
-    bool lct_flag;
-    bool sort_flag;
-    size_t lct_size;
-    uint8_t *color_table;
+    struct GIF_ColorTable *color_table;
 
     struct GIF_ImageData data;
 };
@@ -108,8 +112,6 @@ struct GIF_Graphic
         struct GIF_Image img;
         struct GIF_PlainTextExt plaintext;
     };
-
-    struct GIF_Graphic *next;
 };
 
 /* Container for GIF data. */
@@ -118,11 +120,13 @@ typedef struct GIF
     enum Version version;
     struct GIF_LSD lsd;
 
-    struct GIF_Graphic *graphics;
+    LinkedList *graphics;
 } GIF;
 
 /* Load a GIF from a file. */
 GIF load_gif_from_file(char const *filename);
 
+/* Deallocate GIF data. */
+void free_gif(GIF gif);
 
 #endif  // GIFVIEW_GIF_H

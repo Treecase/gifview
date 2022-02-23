@@ -161,15 +161,18 @@ void read_logical_screen_descriptor(FILE *file, struct GIF_LSD *lsd)
 
     /* grab all the packed fields */
     uint8_t gct_exponent = fields & 7;
-    lsd->sort_flag = (fields >> 3) & 1;
+    bool sort_flag = (fields >> 3) & 1;
     lsd->color_resolution = (fields >> 4) & 7;
-    lsd->gct_flag = (fields >> 7) & 1;
-    lsd->gct_size = 1 << (gct_exponent + 1);
+    bool gct_flag = (fields >> 7) & 1;
+    size_t gct_size = 1 << (gct_exponent + 1);
 
     /* get the Global Color Table, if it exists */
-    if (lsd->gct_flag)
+    if (gct_flag)
     {
-        read_color_table(file, lsd->gct_size, &lsd->color_table);
+        lsd->color_table = malloc(sizeof(*lsd->color_table));
+        lsd->color_table->sorted = sort_flag;
+        lsd->color_table->size = gct_size;
+        read_color_table(file, gct_size, &lsd->color_table->colors);
     }
     else
     {
@@ -199,16 +202,18 @@ void read_image_descriptor(FILE *file, struct GIF_Image *image)
     safe_fread(&fields, 1, 1, file);
 
     uint8_t lct_exponent = fields & 7;
-    image->sort_flag = (fields >> 5) & 1;
+    bool sort_flag = (fields >> 5) & 1;
     image->interlace_flag = (fields >> 6) & 1;
-    image->lct_flag = (fields >> 7) & 1;
-    image->lct_size = 1 << (lct_exponent + 1);
+    bool lct_flag = (fields >> 7) & 1;
+    size_t lct_size = 1 << (lct_exponent + 1);
 
     /* get the Local Color Table */
-    if (image->lct_flag)
+    if (lct_flag)
     {
-        read_color_table(file, image->lct_size, &image->color_table);
-        free(image->color_table);
+        image->color_table = malloc(sizeof(*image->color_table));
+        image->color_table->sorted = sort_flag;
+        image->color_table->size = lct_size;
+        read_color_table(file, lct_size, &image->color_table->colors);
     }
     else
     {
@@ -319,24 +324,6 @@ struct GIF_Graphic *mk_noext_image(void)
 }
 
 
-/* Append NEW to the linked list of GIF_Graphics pointed to by HEAD. */
-void append_graphic(struct GIF_Graphic **head,
-                    struct GIF_Graphic *new)
-{
-    if (*head == NULL)
-    {
-        *head = new;
-        return;
-    }
-    struct GIF_Graphic *curr = *head;
-    while (curr->next != NULL)
-    {
-        curr = curr->next;
-    }
-    curr->next = new;
-}
-
-
 /* Parse a GIF datastream from FILE, storing the data in GIF. */
 void read_GIF(FILE *file, GIF *gif)
 {
@@ -359,8 +346,9 @@ void read_GIF(FILE *file, GIF *gif)
             {
             /* extensionless PlainText */
             case GIF_Ext_PlainText:
-                struct GIF_Graphic *graphic = mk_noext_plaintext(extension);
-                append_graphic(&gif->graphics, graphic);
+                linkedlist_append(
+                    &gif->graphics,
+                    linkedlist_new(mk_noext_plaintext(extension)));
                 break;
 
             /* Graphic Block with extension */
@@ -376,9 +364,10 @@ void read_GIF(FILE *file, GIF *gif)
                     /* PlainText with extension */
                     if (extension2.label == GIF_Ext_PlainText)
                     {
-                        struct GIF_Graphic *graphic =\
-                            mk_ext_plaintext(extension, extension2);
-                        append_graphic(&gif->graphics, graphic);
+                        linkedlist_append(
+                            &gif->graphics,
+                            linkedlist_new(
+                                mk_ext_plaintext(extension, extension2)));
                     }
                     /* expected a PlainText, got something else! */
                     else
@@ -397,7 +386,7 @@ void read_GIF(FILE *file, GIF *gif)
                 case GIF_Block_Image:
                     struct GIF_Graphic *graphic = mk_ext_image(extension);
                     read_image_descriptor(file, &graphic->img);
-                    append_graphic(&gif->graphics, graphic);
+                    linkedlist_append(&gif->graphics, linkedlist_new(graphic));
                     break;
                 }
                 break;
@@ -430,7 +419,7 @@ void read_GIF(FILE *file, GIF *gif)
         case GIF_Block_Image:
             struct GIF_Graphic *graphic = mk_noext_image();
             read_image_descriptor(file, &graphic->img);
-            append_graphic(&gif->graphics, graphic);
+            linkedlist_append(&gif->graphics, linkedlist_new(graphic));
             break;
 
         case GIF_Block_Trailer:
@@ -472,4 +461,35 @@ GIF load_gif_from_file(char const *filename)
     file = NULL;
 
     return gif;
+}
+
+void free_gif(GIF gif)
+{
+    if (gif.lsd.color_table != NULL)
+    {
+        free(gif.lsd.color_table->colors);
+        free(gif.lsd.color_table);
+    }
+
+    for (LinkedList *node = gif.graphics; node != NULL;)
+    {
+        struct GIF_Graphic *g = node->data;
+        if (g->is_img)
+        {
+            free(g->img.data.image);
+            if (g->img.color_table != NULL
+                && g->img.color_table != gif.lsd.color_table)
+            {
+                free(g->img.color_table->colors);
+                free(g->img.color_table);
+            }
+        }
+        else
+        {
+            free(g->plaintext.data);
+        }
+        LinkedList *next = node->next;
+        free(node);
+        node = next;
+    }
 }
