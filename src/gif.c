@@ -265,7 +265,8 @@ void parse_graphic_ext(struct GenericExtension ext, struct GIF_GraphicExt *out)
 }
 
 /* Convert generic extension data from EXT into a PlainText extension in OUT. */
-void parse_plaintext_ext(struct GenericExtension ext, struct GIF_PlainTextExt *out)
+void parse_plaintext_ext(
+    struct GenericExtension ext, struct GIF_PlainTextExt *out)
 {
     memcpy(&out->tg_left    , ext.data+ 0, 2);
     memcpy(&out->tg_top     , ext.data+ 2, 2);
@@ -278,6 +279,18 @@ void parse_plaintext_ext(struct GenericExtension ext, struct GIF_PlainTextExt *o
     out->data_size = ext.data_size - 12;
     out->data = malloc(out->data_size);
     memcpy(out->data, ext.data + 12, out->data_size);
+}
+
+/* Convert generic extension data from EXT into a Application extension in
+ * OUT. */
+void parse_application_ext(
+    struct GenericExtension ext, struct GIF_ApplicationExt *out)
+{
+    memcpy(out->appid, ext.data, 8);
+    memcpy(out->auth_code, ext.data + 8, 3);
+    out->data_size = ext.data_size - 11;
+    out->data = malloc(out->data_size);
+    memcpy(out->data, ext.data + 11, out->data_size);
 }
 
 
@@ -392,16 +405,17 @@ void read_GIF(FILE *file, GIF *gif)
                 break;
 
             case GIF_Ext_Comment:
-                // data < special purpose block
-                printf("WARNING: (%ld) comment extension not implemented!\n",
-                    ftell(file));
+                char *comment = calloc(extension.data_size, 1);
+                memcpy(comment, extension.data, extension.data_size);
+                linkedlist_append(&gif->comments, linkedlist_new(comment));
                 break;
 
             case GIF_Ext_ApplicationExtension:
-                // data < special purpose block
-                printf(
-                    "WARNING: (%ld) application extension not implemented!\n",
-                    ftell(file));
+                struct GIF_ApplicationExt *appext = malloc(sizeof(*appext));
+                parse_application_ext(extension, appext);
+                linkedlist_append(
+                    &gif->app_extensions,
+                     linkedlist_new(appext));
                 break;
 
             default:

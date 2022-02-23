@@ -37,10 +37,17 @@ struct Graphic
     size_t delay;
 };
 
+/* SDL data for the app. */
+struct sdldata
+{
+    SDL_Window *window;
+    SDL_Surface *screen;
+};
+
 
 /* Create a Graphic from a GIF_Graphic. */
 struct Graphic *mk_SDLSurface_from_GIFImage(
-    struct GIF_Graphic graphic, struct GIF_ColorTable *gct)
+    struct GIF_Graphic graphic, struct GIF_ColorTable const *gct)
 {
     if (!graphic.is_img)
     {
@@ -71,7 +78,7 @@ struct Graphic *mk_SDLSurface_from_GIFImage(
         }
     }
 
-    struct GIF_ColorTable *table = gct;
+    struct GIF_ColorTable const *table = gct;
     if (image.color_table != NULL)
     {
         table = image.color_table;
@@ -120,13 +127,6 @@ Uint32 timer_callback(Uint32 interval, void *param)
     SDL_PushEvent(&event);
     return interval;
 }
-
-/* SDL data for the app. */
-struct sdldata
-{
-    SDL_Window *window;
-    SDL_Surface *screen;
-};
 
 /* Create SDL data. */
 struct sdldata init_sdl(int window_width, int window_height)
@@ -221,6 +221,17 @@ int main(int argc, char *argv[])
 
     GIF gif = load_gif_from_file(filename);
 
+    for (LinkedList *node = gif.comments; node != NULL; node = node->next)
+    {
+        printf("Comment: '%s'\n", (char const *)node->data);
+    }
+    for (LinkedList *node = gif.app_extensions; node != NULL; node = node->next)
+    {
+        struct GIF_ApplicationExt const *ext = node->data;
+        printf("App Extension: %.8s%.3s (%zu data bytes)\n",
+            ext->appid, ext->auth_code, ext->data_size);
+    }
+
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER);
 
     /* Generate SDL_Surfaces from the GIF's graphics. */
@@ -269,7 +280,7 @@ int main(int argc, char *argv[])
             break;
 
         case SDL_USEREVENT:
-            struct Graphic *image = current_frame->data;
+            struct Graphic const *image = current_frame->data;
             timer_increment++;
             if (timer_increment >= image->delay)
             {

@@ -101,6 +101,15 @@ struct GIF_PlainTextExt
     uint8_t *data;
 };
 
+/* Application extension */
+struct GIF_ApplicationExt
+{
+    char appid[8];
+    char auth_code[3];
+    size_t data_size;
+    uint8_t *data;
+};
+
 /* Graphic Block */
 struct GIF_Graphic
 {
@@ -121,6 +130,8 @@ typedef struct GIF
     struct GIF_LSD lsd;
 
     LinkedList *graphics;
+    LinkedList *comments;
+    LinkedList *app_extensions;
 } GIF;
 
 /* Load a GIF from a file. */
