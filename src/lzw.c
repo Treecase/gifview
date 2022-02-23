@@ -38,14 +38,17 @@ struct String
     uint8_t *data;
 };
 
-/* Read N bits from STREAM. */
-uint16_t bitstream_read(size_t n, struct Bitstream *stream)
+struct Buffer
 {
-    if (n > 16)
-    {
-        fprintf(stderr, "n too large! (%zu/16)\n", n);
-        exit(EXIT_FAILURE);
-    }
+    size_t size;
+    size_t allocated;
+    uint8_t *data;
+};
+
+
+/* Read N bits from STREAM. */
+unsigned int bitstream_read(size_t n, struct Bitstream *stream)
+{
     unsigned int out = 0;
     size_t bit = 0;
 
@@ -62,7 +65,6 @@ uint16_t bitstream_read(size_t n, struct Bitstream *stream)
     return out;
 }
 
-
 /* Append SUFFIX to the end of PREFIX. */
 struct String concat(struct String prefix, char suffix)
 {
@@ -71,14 +73,22 @@ struct String concat(struct String prefix, char suffix)
         .data = malloc(new.size)
     };
     memcpy(new.data, prefix.data, prefix.size);
-    memcpy(new.data + prefix.size, &suffix, 1);
+    new.data[prefix.size] = suffix;
     return new;
 }
 
 /* Append DATA to BUFFER. */
-void append(struct String *buffer, struct String data)
+void append(struct Buffer *buffer, struct String data)
 {
-    buffer->data = realloc(buffer->data, buffer->size + data.size);
+    /* Number of extra bytes to allocate when the buffer is resized. */
+    static size_t const growth_amount = 1024 * 8;
+
+    size_t const newsize = buffer->size + data.size;
+    if (newsize >= buffer->allocated)
+    {
+        buffer->allocated = newsize + growth_amount;
+        buffer->data = realloc(buffer->data, buffer->allocated);
+    }
     memcpy(buffer->data + buffer->size, data.data, data.size);
     buffer->size += data.size;
 }
@@ -111,7 +121,7 @@ size_t unlzw(size_t min_code_size, uint8_t const *in, uint8_t **out)
     }
 
     struct Bitstream input = {.stream = in, .byte = 0, .bit = 0};
-    struct String output = {.size = 0, .data = NULL};
+    struct Buffer output = {.size = 0, .data = NULL};
 
     uint16_t symbol = 0;
     /* Table is in default state already, so we can skip any leading clear
@@ -155,7 +165,7 @@ size_t unlzw(size_t min_code_size, uint8_t const *in, uint8_t **out)
         }
         else if (symbol < next)
         {
-            struct String W = table[symbol];
+            struct String const W = table[symbol];
             append(&output, W);
             if (next < table_size)
             {
@@ -165,7 +175,7 @@ size_t unlzw(size_t min_code_size, uint8_t const *in, uint8_t **out)
         }
         else
         {
-            struct String V = concat(previous, previous.data[0]);
+            struct String const V = concat(previous, previous.data[0]);
             append(&output, V);
             if (next < table_size)
             {
@@ -189,6 +199,6 @@ LZW_done:
             free(table[i].data);
         }
     }
-    *out = output.data;
+    *out = realloc(output.data, output.size);
     return output.size;
 }
