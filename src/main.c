@@ -24,6 +24,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include <getopt.h>
+
 #define SDL_MAIN_HANDLED    1
 #include <SDL2/SDL.h>
 #undef SDL_MAIN_HANDLED
@@ -209,16 +211,94 @@ void free_graphics(LinkedList *graphics)
     }
 }
 
+/* Print GIFView help information. */
+void usage(char const *name)
+{
+    printf("Usage: %s [OPTIONS] FILE\n", name);
+    puts("Display GIF images.");
+    puts("");
+    puts("OPTIONS");
+    puts("      --help     display this help and exit");
+    puts("      --version  output version information and exit");
+    puts("");
+    puts("Report bugs to: <https://github.com/Treecase/gifview/issues>");
+    puts("pkg home page: <https://github.com/Treecase/gifview>");
+}
+
+/* Print GIFView version information. */
+void version(void)
+{
+    puts("GIFView 0.1.0");
+    puts("Copyright (C) 2022 Trevor Last");
+    puts("License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>");
+    puts("This is free software: you are free to change and redistribute it.");
+    puts("There is NO WARRANTY, to the extent permitted by law.");
+}
+
+/* Parse argv. */
+char const *parse_args(int argc, char *argv[])
+{
+    static char const *const short_options = "";
+    static struct option const long_options[] = {
+        {"help",    no_argument, NULL, 0},
+        {"version", no_argument, NULL, 0},
+        {NULL, 0, NULL, 0}
+    };
+
+    int c, long_opt_ptr;
+    while (
+        (c = getopt_long(
+            argc, argv, short_options, long_options, &long_opt_ptr))
+        != -1)
+    {
+        switch (c)
+        {
+        /* long options */
+        case 0:
+            switch (long_opt_ptr)
+            {
+            /* --help */
+            case 0:
+                usage(argv[0]);
+                exit(EXIT_SUCCESS);
+                break;
+
+            /* --version */
+            case 1:
+                version();
+                exit(EXIT_SUCCESS);
+                break;
+            }
+            break;
+
+        /* unrecognized option */
+        case '?':
+            break;
+
+        default:
+            exit(EXIT_FAILURE);
+            break;
+        }
+    }
+
+    if (optind >= argc)
+    {
+        fputs("No filename given!\n", stderr);
+        exit(EXIT_FAILURE);
+    }
+    else if (optind + 1 != argc)
+    {
+        /* TODO: Handle this properly instead of just exiting. */
+        fputs("More than one filename given!\n", stderr);
+        exit(EXIT_FAILURE);
+    }
+    return argv[optind];
+}
+
 
 int main(int argc, char *argv[])
 {
-    if (argc != 2)
-    {
-        fprintf(stderr, "No filename given!\n");
-        exit(EXIT_FAILURE);
-    }
-    char const *const filename = argv[1];
-
+    char const *const filename = parse_args(argc, argv);
     GIF gif = load_gif_from_file(filename);
 
     for (LinkedList *node = gif.comments; node != NULL; node = node->next)
