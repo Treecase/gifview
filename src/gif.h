@@ -28,7 +28,7 @@
 
 
 /* GIF Versions */
-enum Version
+enum GIF_Version
 {
     GIF_Version_Unknown,
     GIF_Version_87a,
@@ -43,26 +43,6 @@ struct GIF_ColorTable
     uint8_t *colors;
 };
 
-/* GIF logical screen descriptor */
-struct GIF_LSD
-{
-    uint16_t width, height;
-    uint8_t bg_color_index;
-
-    uint8_t color_resolution;
-    uint8_t pixel_aspect_ratio;
-
-    struct GIF_ColorTable *color_table;
-};
-
-/* GIF Table-Based Image data */
-struct GIF_ImageData
-{
-    uint8_t min_code_size;
-    size_t image_size;
-    uint8_t *image;
-};
-
 /* Image Descriptor */
 struct GIF_Image
 {
@@ -71,7 +51,8 @@ struct GIF_Image
 
     struct GIF_ColorTable *color_table;
 
-    struct GIF_ImageData data;
+    size_t size;
+    uint8_t *pixels;
 };
 
 /* Graphic extension */
@@ -113,8 +94,7 @@ struct GIF_ApplicationExt
 /* Graphic Block */
 struct GIF_Graphic
 {
-    bool has_extension;
-    struct GIF_GraphicExt extension;
+    struct GIF_GraphicExt *extension;
     bool is_img;
     union
     {
@@ -126,8 +106,15 @@ struct GIF_Graphic
 /* Container for GIF data. */
 typedef struct GIF
 {
-    enum Version version;
-    struct GIF_LSD lsd;
+    enum GIF_Version version;
+
+    uint16_t width, height;
+    uint8_t bg_color_index;
+
+    uint8_t color_resolution;
+    uint8_t pixel_aspect_ratio;
+
+    struct GIF_ColorTable *global_color_table;
 
     LinkedList *graphics;
     LinkedList *comments;

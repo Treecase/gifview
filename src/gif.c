@@ -100,7 +100,7 @@ void read_data_sub_blocks(FILE *file, size_t *data_size, uint8_t **data)
 
 /* Read a Header block from FILE, and placing the parsed version number into
  * VERSION. */
-void read_header(FILE *file, enum Version *version)
+void read_header(FILE *file, enum GIF_Version *version)
 {
     char header[6];
 
@@ -147,47 +147,37 @@ void read_color_table(FILE *file, size_t size, uint8_t **table)
     if (safe_fread(*table, 3, size, file))   exit(EXIT_FAILURE);
 }
 
-/* Read a Logical Screen Descriptor from FILE, storing the data in LSD. */
-void read_logical_screen_descriptor(FILE *file, struct GIF_LSD *lsd)
+/* Read a Logical Screen Descriptor from FILE, storing the data in GIF. */
+void read_logical_screen_descriptor(FILE *file, struct GIF *gif)
 {
     uint8_t fields;
 
     /* read all the LSD data */
-    if (safe_fread(&lsd->width, 2, 1, file))                exit(EXIT_FAILURE);
-    if (safe_fread(&lsd->height, 2, 1, file))               exit(EXIT_FAILURE);
+    if (safe_fread(&gif->width, 2, 1, file))                exit(EXIT_FAILURE);
+    if (safe_fread(&gif->height, 2, 1, file))               exit(EXIT_FAILURE);
     if (safe_fread(&fields, 1, 1, file))                    exit(EXIT_FAILURE);
-    if (safe_fread(&lsd->bg_color_index, 1, 1, file))       exit(EXIT_FAILURE);
-    if (safe_fread(&lsd->pixel_aspect_ratio, 1, 1, file))   exit(EXIT_FAILURE);
+    if (safe_fread(&gif->bg_color_index, 1, 1, file))       exit(EXIT_FAILURE);
+    if (safe_fread(&gif->pixel_aspect_ratio, 1, 1, file))   exit(EXIT_FAILURE);
 
     /* grab all the packed fields */
     uint8_t gct_exponent = fields & 7;
     bool sort_flag = (fields >> 3) & 1;
-    lsd->color_resolution = (fields >> 4) & 7;
+    gif->color_resolution = (fields >> 4) & 7;
     bool gct_flag = (fields >> 7) & 1;
     size_t gct_size = 1 << (gct_exponent + 1);
 
     /* get the Global Color Table, if it exists */
     if (gct_flag)
     {
-        lsd->color_table = malloc(sizeof(*lsd->color_table));
-        lsd->color_table->sorted = sort_flag;
-        lsd->color_table->size = gct_size;
-        read_color_table(file, gct_size, &lsd->color_table->colors);
+        gif->global_color_table = malloc(sizeof(*gif->global_color_table));
+        gif->global_color_table->sorted = sort_flag;
+        gif->global_color_table->size = gct_size;
+        read_color_table(file, gct_size, &gif->global_color_table->colors);
     }
     else
     {
-        lsd->color_table = NULL;
+        gif->global_color_table = NULL;
     }
-}
-
-/* Fill IMAGE with Table-Based Image Data data read from FILE. */
-void read_image_data(FILE *file, struct GIF_ImageData *image)
-{
-    if (safe_fread(&image->min_code_size, 1, 1, file)) exit(EXIT_FAILURE);
-    uint8_t *compressed = NULL;
-    size_t compressed_size = 0;
-    read_data_sub_blocks(file, &compressed_size, &compressed);
-    image->image_size = unlzw(image->min_code_size, compressed, &image->image);
 }
 
 /* Fill IMAGE with Image Descriptor data read from FILE. */
@@ -220,8 +210,13 @@ void read_image_descriptor(FILE *file, struct GIF_Image *image)
         image->color_table = NULL;
     }
 
-    image->data.image = NULL;
-    read_image_data(file, &image->data);
+    /* Read the Table-Based Image Data following the Image Descriptor. */
+    uint8_t min_code_size;
+    if (safe_fread(&min_code_size, 1, 1, file)) exit(EXIT_FAILURE);
+    uint8_t *compressed = NULL;
+    size_t compressed_size = 0;
+    read_data_sub_blocks(file, &compressed_size, &compressed);
+    image->size = unlzw(min_code_size, compressed, &image->pixels);
 }
 
 /* Fill EXTENSION with generic GIF extension data read from FILE. */
@@ -300,8 +295,8 @@ struct GIF_Graphic *mk_ext_plaintext(
     struct GenericExtension gce, struct GenericExtension pte)
 {
     struct GIF_Graphic *graphic = calloc(1, sizeof(struct GIF_Graphic));
-    graphic->has_extension = true;
-    parse_graphic_ext(gce, &graphic->extension);
+    graphic->extension = malloc(sizeof(*graphic->extension));
+    parse_graphic_ext(gce, graphic->extension);
     graphic->is_img = false;
     parse_plaintext_ext(pte, &graphic->plaintext);
     return graphic;
@@ -311,7 +306,7 @@ struct GIF_Graphic *mk_ext_plaintext(
 struct GIF_Graphic *mk_noext_plaintext(struct GenericExtension ext)
 {
     struct GIF_Graphic *graphic = calloc(1, sizeof(struct GIF_Graphic));
-    graphic->has_extension = false;
+    graphic->extension = NULL;
     graphic->is_img = false;
     parse_plaintext_ext(ext, &graphic->plaintext);
     return graphic;
@@ -321,8 +316,8 @@ struct GIF_Graphic *mk_noext_plaintext(struct GenericExtension ext)
 struct GIF_Graphic *mk_ext_image(struct GenericExtension gce)
 {
     struct GIF_Graphic *graphic = calloc(1, sizeof(struct GIF_Graphic));
-    graphic->has_extension = true;
-    parse_graphic_ext(gce, &graphic->extension);
+    graphic->extension = malloc(sizeof(*graphic->extension));
+    parse_graphic_ext(gce, graphic->extension);
     graphic->is_img = true;
     return graphic;
 }
@@ -331,7 +326,7 @@ struct GIF_Graphic *mk_ext_image(struct GenericExtension gce)
 struct GIF_Graphic *mk_noext_image(void)
 {
     struct GIF_Graphic *graphic = calloc(1, sizeof(struct GIF_Graphic));
-    graphic->has_extension = false;
+    graphic->extension = NULL;
     graphic->is_img = true;
     return graphic;
 }
@@ -341,7 +336,7 @@ struct GIF_Graphic *mk_noext_image(void)
 void read_GIF(FILE *file, GIF *gif)
 {
     read_header(file, &gif->version);
-    read_logical_screen_descriptor(file, &gif->lsd);
+    read_logical_screen_descriptor(file, gif);
 
     /* read data blocks until we hit a GIF Trailer */
     for (bool done = false; !done;)
@@ -399,6 +394,10 @@ void read_GIF(FILE *file, GIF *gif)
                 case GIF_Block_Image:
                     struct GIF_Graphic *graphic = mk_ext_image(extension);
                     read_image_descriptor(file, &graphic->img);
+                    if (graphic->img.color_table == NULL)
+                    {
+                        graphic->img.color_table = gif->global_color_table;
+                    }
                     linkedlist_append(&gif->graphics, linkedlist_new(graphic));
                     break;
                 }
@@ -433,6 +432,10 @@ void read_GIF(FILE *file, GIF *gif)
         case GIF_Block_Image:
             struct GIF_Graphic *graphic = mk_noext_image();
             read_image_descriptor(file, &graphic->img);
+            if (graphic->img.color_table == NULL)
+            {
+                graphic->img.color_table = gif->global_color_table;
+            }
             linkedlist_append(&gif->graphics, linkedlist_new(graphic));
             break;
 
@@ -479,10 +482,10 @@ GIF load_gif_from_file(char const *filename)
 
 void free_gif(GIF gif)
 {
-    if (gif.lsd.color_table != NULL)
+    if (gif.global_color_table != NULL)
     {
-        free(gif.lsd.color_table->colors);
-        free(gif.lsd.color_table);
+        free(gif.global_color_table->colors);
+        free(gif.global_color_table);
     }
 
     for (LinkedList *node = gif.graphics; node != NULL;)
@@ -490,9 +493,9 @@ void free_gif(GIF gif)
         struct GIF_Graphic *g = node->data;
         if (g->is_img)
         {
-            free(g->img.data.image);
+            free(g->img.pixels);
             if (g->img.color_table != NULL
-                && g->img.color_table != gif.lsd.color_table)
+                && g->img.color_table != gif.global_color_table)
             {
                 free(g->img.color_table->colors);
                 free(g->img.color_table);

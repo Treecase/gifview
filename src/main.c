@@ -48,8 +48,7 @@ struct sdldata
 
 
 /* Create a Graphic from a GIF_Graphic. */
-struct Graphic *mk_SDLSurface_from_GIFImage(
-    struct GIF_Graphic graphic, struct GIF_ColorTable const *gct)
+struct Graphic *mk_SDLSurface_from_GIFImage(struct GIF_Graphic graphic)
 {
     if (!graphic.is_img)
     {
@@ -62,54 +61,61 @@ struct Graphic *mk_SDLSurface_from_GIFImage(
     out->rect.w = image.width;
     out->rect.h = image.height;
     out->surface = SDL_CreateRGBSurfaceWithFormatFrom(
-        image.data.image,
+        image.pixels,
         image.width, image.height,
         8,
         image.width,
         SDL_PIXELFORMAT_INDEX8);
 
-    if (graphic.has_extension)
+    if (out->surface == NULL)
     {
-        out->delay = graphic.extension.delay_time;
-        if (graphic.extension.transparent_color_flag)
+        SDL_LogError(
+            SDL_LOG_CATEGORY_APPLICATION,
+            "SDL_CreateRGBSurfaceWithFormatFrom -- %s\n",
+            SDL_GetError());
+        free(out);
+        return NULL;
+    }
+
+    if (graphic.extension)
+    {
+        out->delay = graphic.extension->delay_time;
+        if (graphic.extension->transparent_color_flag)
         {
             SDL_SetColorKey(
                 out->surface,
                 SDL_TRUE,
-                graphic.extension.transparent_color_idx);
+                graphic.extension->transparent_color_idx);
         }
     }
 
-    struct GIF_ColorTable const *table = gct;
-    if (image.color_table != NULL)
+    struct GIF_ColorTable const *table = image.color_table;
+    if (table == NULL)
     {
-        table = image.color_table;
+        SDL_LogWarn(
+            SDL_LOG_CATEGORY_APPLICATION,
+            "mk_SDLSurface_from_GIFImage -- Image has no palette!\n");
+        return out;
     }
-    if (table != NULL)
+    SDL_Color *colors = malloc(sizeof(SDL_Color) * table->size);
+    for (size_t i = 0; i < table->size; ++i)
     {
-        SDL_Color *colors = malloc(sizeof(SDL_Color) * table->size);
-        for (size_t i = 0; i < table->size; ++i)
-        {
-            colors[i].r = table->colors[(3*i)+0];
-            colors[i].g = table->colors[(3*i)+1];
-            colors[i].b = table->colors[(3*i)+2];
-            colors[i].a = 255;
-        }
+        colors[i].r = table->colors[(3*i)+0];
+        colors[i].g = table->colors[(3*i)+1];
+        colors[i].b = table->colors[(3*i)+2];
+        colors[i].a = 255;
+    }
 
-        if (SDL_SetPaletteColors(
-                out->surface->format->palette, colors, 0, table->size)
-            != 0)
-        {
-            fputs("palette set fail", stderr);
-            exit(EXIT_FAILURE);
-        }
-        free(colors);
+    if (SDL_SetPaletteColors(
+            out->surface->format->palette, colors, 0, table->size)
+        != 0)
+    {
+        SDL_LogError(
+            SDL_LOG_CATEGORY_APPLICATION,
+            "SDL_SetPaletteColors -- %s\n",
+            SDL_GetError());
     }
-    else{
-        fputs(
-            "WARNING: mk_SDLSurface_from_GIFImage -- Image has no palette!\n",
-            stderr);
-    }
+    free(colors);
     return out;
 }
 
@@ -142,14 +148,20 @@ struct sdldata init_sdl(int window_width, int window_height)
         SDL_WINDOW_RESIZABLE);
     if (data.window == NULL)
     {
-        SDL_LogCritical(0, "Failed to create window -- %s\n", SDL_GetError());
+        SDL_LogCritical(
+            SDL_LOG_CATEGORY_APPLICATION,
+            "Failed to create window -- %s\n",
+            SDL_GetError());
         exit(EXIT_FAILURE);
     }
 
     data.screen = SDL_GetWindowSurface(data.window);
     if (data.screen == NULL)
     {
-        SDL_LogCritical(0, "Failed to create screen -- %s\n", SDL_GetError());
+        SDL_LogCritical(
+            SDL_LOG_CATEGORY_APPLICATION,
+            "Failed to create screen -- %s\n",
+            SDL_GetError());
         exit(EXIT_FAILURE);
     }
     return data;
@@ -173,9 +185,7 @@ LinkedList *graphics2surfaces(GIF gif)
         {
             linkedlist_append(
                 &images,
-                linkedlist_new(mk_SDLSurface_from_GIFImage(
-                    *graphic,
-                    gif.lsd.color_table)));
+                linkedlist_new(mk_SDLSurface_from_GIFImage(*graphic)));
         }
         else
         {
@@ -318,7 +328,7 @@ int main(int argc, char *argv[])
     LinkedList *images = graphics2surfaces(gif);
 
     /* G holds all the SDL stuff. */
-    struct sdldata G = init_sdl(gif.lsd.width, gif.lsd.height);
+    struct sdldata G = init_sdl(gif.width, gif.height);
 
     /* Clear the screen. */
     Uint32 const clear_color = SDL_MapRGB(G.screen->format, 0x00, 0x00, 0x00);
@@ -345,7 +355,9 @@ int main(int argc, char *argv[])
                 if (SDL_UpdateWindowSurface(G.window))
                 {
                     SDL_LogError(
-                        0, "SDL_UpdateWindowSurface -- %s\n", SDL_GetError());
+                        SDL_LOG_CATEGORY_APPLICATION,
+                        "SDL_UpdateWindowSurface -- %s\n",
+                        SDL_GetError());
                 }
             }
             screen_dirty = false;
