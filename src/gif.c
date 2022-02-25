@@ -180,6 +180,47 @@ void read_logical_screen_descriptor(FILE *file, struct GIF *gif)
     }
 }
 
+/* Deinterlace interlaced GIF image data. */
+void deinterlace(struct GIF_Image *image)
+{
+    uint8_t *interlaced = image->pixels;
+    uint8_t *deinterlaced = malloc(image->size);
+
+    /* Current row index of the interlaced data. */
+    size_t n = 0;
+
+    /* Group 1: Every 8th row, starting from row 0. */
+    for (size_t y = 0; y < image->height; ++n, y += 8)
+    {
+        size_t il_row = n * image->width;
+        size_t di_row = y * image->width;
+        memcpy(deinterlaced + di_row, interlaced + il_row, image->width);
+    }
+    /* Group 2: Every 8th row, starting from row 4. */
+    for (size_t y = 4; y < image->height; ++n, y += 8)
+    {
+        size_t il_row = n * image->width;
+        size_t di_row = y * image->width;
+        memcpy(deinterlaced + di_row, interlaced + il_row, image->width);
+    }
+    /* Group 3: Every 4th row, starting from row 2. */
+    for (size_t y = 2; y < image->height; ++n, y += 4)
+    {
+        size_t il_row = n * image->width;
+        size_t di_row = y * image->width;
+        memcpy(deinterlaced + di_row, interlaced + il_row, image->width);
+    }
+    /* Group 4: Every 2nd row, starting from row 1. */
+    for (size_t y = 1; y < image->height; ++n, y += 2)
+    {
+        size_t il_row = n * image->width;
+        size_t di_row = y * image->width;
+        memcpy(deinterlaced + di_row, interlaced + il_row, image->width);
+    }
+    free(interlaced);
+    image->pixels = deinterlaced;
+}
+
 /* Fill IMAGE with Image Descriptor data read from FILE. */
 void read_image_descriptor(FILE *file, struct GIF_Image *image)
 {
@@ -217,6 +258,10 @@ void read_image_descriptor(FILE *file, struct GIF_Image *image)
     size_t compressed_size = 0;
     read_data_sub_blocks(file, &compressed_size, &compressed);
     image->size = unlzw(min_code_size, compressed, &image->pixels);
+    if (image->interlace_flag)
+    {
+        deinterlace(image);
+    }
 }
 
 /* Fill EXTENSION with generic GIF extension data read from FILE. */
