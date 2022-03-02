@@ -20,34 +20,44 @@
 #include "args.h"
 #include "config.h"
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include <getopt.h>
 
 
-void usage(char const *name)
+void usage(char const *name, bool print_long)
 {
     printf("Usage: %s [OPTIONS] FILE\n", name);
-    puts("Display GIF images.");
-    puts("");
-    puts("OPTIONS");
-    puts("      --help     display this help and exit");
-    puts("      --version  output version information and exit");
-    puts("");
-    puts("Report bugs to: <https://github.com/Treecase/gifview/issues>");
-    puts("pkg home page: <https://github.com/Treecase/gifview>");
+    if (print_long)
+    {
+        puts("\
+Display GIF images.\
+\
+OPTIONS\
+      --help     display this help and exit\
+      --version  output version information and exit\
+\
+Report bugs to: <https://github.com/Treecase/gifview/issues>\
+pkg home page: <https://github.com/Treecase/gifview>\
+        ");
+    }
 }
 
 void version(void)
 {
     printf("%s %d.%d.%d\n",
         GIFVIEW_PROGRAM_NAME,
-        GIFVIEW_VERSION_MAJOR, GIFVIEW_VERSION_MINOR, GIFVIEW_VERSION_PATCH);
-    puts("Copyright (C) 2022 Trevor Last");
-    puts("License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>");
-    puts("This is free software: you are free to change and redistribute it.");
-    puts("There is NO WARRANTY, to the extent permitted by law.");
+        GIFVIEW_VERSION_MAJOR,
+        GIFVIEW_VERSION_MINOR,
+        GIFVIEW_VERSION_PATCH);
+    puts("\
+Copyright (C) 2022 Trevor Last\
+License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>\
+This is free software: you are free to change and redistribute it.\
+There is NO WARRANTY, to the extent permitted by law.\
+    ");
 }
 
 char const *parse_args(int argc, char *argv[])
@@ -59,6 +69,7 @@ char const *parse_args(int argc, char *argv[])
         {NULL, 0, NULL, 0}
     };
 
+    bool bad_args = false;
     int c, long_opt_ptr;
     while (
         (c = getopt_long(
@@ -73,7 +84,7 @@ char const *parse_args(int argc, char *argv[])
             {
             /* --help */
             case 0:
-                usage(argv[0]);
+                usage(argv[0], true);
                 exit(EXIT_SUCCESS);
                 break;
 
@@ -87,6 +98,7 @@ char const *parse_args(int argc, char *argv[])
 
         /* unrecognized option */
         case '?':
+            bad_args = true;
             break;
 
         default:
@@ -94,16 +106,22 @@ char const *parse_args(int argc, char *argv[])
             break;
         }
     }
+    if (bad_args)
+    {
+        exit(EXIT_FAILURE);
+    }
 
     if (optind >= argc)
     {
         fputs("No filename given!\n", stderr);
+        usage(argv[0], false);
         exit(EXIT_FAILURE);
     }
     else if (optind + 1 != argc)
     {
         /* TODO: Handle this properly instead of just exiting. */
         fputs("More than one filename given!\n", stderr);
+        usage(argv[0], false);
         exit(EXIT_FAILURE);
     }
     return argv[optind];

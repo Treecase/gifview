@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#define SDL_MAIN_HANDLED    1
+#define SDL_MAIN_HANDLED 1  // For compiling with MinGW.
 #include <SDL2/SDL.h>
 #undef SDL_MAIN_HANDLED
 

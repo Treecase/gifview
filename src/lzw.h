@@ -21,6 +21,7 @@
 #define GIFVIEW_LZW_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 /* Decompress LZW-compressed data from IN into OUT.  Returns the number of
  * bytes stored in OUT. */

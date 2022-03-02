@@ -20,8 +20,10 @@
 #ifndef _GIFVIEW_ARGS_H
 #define _GIFVIEW_ARGS_H
 
+#include <stdbool.h>
+
 /* Print GIFView help information. */
-void usage(char const *name);
+void usage(char const *name, bool print_long);
 
 /* Print GIFView version information. */
 void version(void);
