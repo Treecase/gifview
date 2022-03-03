@@ -267,6 +267,32 @@ void free_graphics(LinkedList *graphics)
     }
 }
 
+/* Clear the screen. */
+void clear_screen(struct sdldata G)
+{
+    static int const grid_size = 8;
+
+    Uint32 const grid_a = SDL_MapRGB(G.screen->format, 0x90, 0x90, 0x90);
+    Uint32 const grid_b = SDL_MapRGB(G.screen->format, 0x64, 0x64, 0x64);
+
+    int w, h;
+    SDL_GetWindowSize(G.window, &w, &h);
+
+    SDL_FillRect(G.screen, NULL, grid_a);
+    for (int y = 0; y < (h/grid_size+1); ++y)
+    {
+        for (int x = ((y % 2 == 1)? 0 : grid_size); x < w; x += grid_size*2)
+        {
+            SDL_Rect const rect = {
+                .h = grid_size,
+                .w = grid_size,
+                .x = x,
+                .y = y * grid_size};
+            SDL_FillRect(G.screen, &rect, grid_b);
+        }
+    }
+}
+
 int main(int argc, char *argv[])
 {
     char const *const filename = parse_args(argc, argv);
@@ -292,8 +318,7 @@ int main(int argc, char *argv[])
     struct sdldata G = init_sdl(gif.width, gif.height);
 
     /* Clear the screen. */
-    Uint32 const clear_color = SDL_MapRGB(G.screen->format, 0x00, 0x00, 0x00);
-    SDL_FillRect(G.screen, NULL, clear_color);
+    clear_screen(G);
 
     /* Current frame of the GIF's animation. */
     LinkedList *current_frame = images;
@@ -317,12 +342,12 @@ int main(int argc, char *argv[])
                 .x = (w / 2) - (img->rect.w / 2),
                 .y = (h / 2) - (img->rect.h / 2)
             };
-            SDL_FillRect(G.screen, NULL, clear_color);
+            clear_screen(G);
             SDL_BlitSurface(img->surface, NULL, G.screen, &position);
             if (SDL_UpdateWindowSurface(G.window))
             {
                 G.screen = SDL_GetWindowSurface(G.window);
-                SDL_FillRect(G.screen, NULL, clear_color);
+                clear_screen(G);
                 SDL_BlitSurface(img->surface, NULL, G.screen, &img->rect);
                 if (SDL_UpdateWindowSurface(G.window))
                 {
