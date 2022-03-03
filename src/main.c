@@ -43,7 +43,30 @@ struct sdldata
 {
     SDL_Window *window;
     SDL_Surface *screen;
+    int width, height;
 };
+
+/* Image draw data. */
+struct DrawingData
+{
+    double zoom;
+    int offset_x, offset_y;
+};
+
+
+/* Size (in pixels) of background grid squares. */
+static int const BACKGROUND_GRID_SIZE = 8;
+
+/* Color for even-numbered background grid squares. */
+static uint8_t const BACKGROUND_GRID_COLOR_A[3] = {0x64, 0x64, 0x64};
+/* Color for odd-numbered background grid squares. */
+static uint8_t const BACKGROUND_GRID_COLOR_B[3] = {0x90, 0x90, 0x90};
+
+/* Number of pixels to shift the image when shifting it using arrow keys. */
+static int const SHIFT_AMOUNT = 2.5 * BACKGROUND_GRID_SIZE;
+
+/* How much to zoom in/out when +/- are pressed. */
+static int const ZOOM_CHANGE_MULTIPLIER = 2;
 
 
 /* 1/100 second timer callback.  Used to trigger frame changes in animated
@@ -56,9 +79,7 @@ Uint32 timer_callback(Uint32 interval, void *param)
             .code = 0,
             .data1 = NULL,
             .data2 = NULL,
-            .type = SDL_USEREVENT
-        }
-    };
+            .type = SDL_USEREVENT}};
     SDL_PushEvent(&event);
     return interval;
 }
@@ -91,6 +112,7 @@ struct sdldata init_sdl(int window_width, int window_height)
             SDL_GetError());
         exit(EXIT_FAILURE);
     }
+    SDL_GetWindowSize(data.window, &data.width, &data.height);
     return data;
 }
 
@@ -270,26 +292,82 @@ void free_graphics(LinkedList *graphics)
 /* Clear the screen. */
 void clear_screen(struct sdldata G)
 {
-    static int const grid_size = 8;
+    Uint32 const grid_color_a = SDL_MapRGB(
+        G.screen->format,
+        BACKGROUND_GRID_COLOR_A[0],
+        BACKGROUND_GRID_COLOR_A[1],
+        BACKGROUND_GRID_COLOR_A[2]);
+    Uint32 const grid_color_b = SDL_MapRGB(
+        G.screen->format,
+        BACKGROUND_GRID_COLOR_B[0],
+        BACKGROUND_GRID_COLOR_B[1],
+        BACKGROUND_GRID_COLOR_B[2]);
 
-    Uint32 const grid_a = SDL_MapRGB(G.screen->format, 0x90, 0x90, 0x90);
-    Uint32 const grid_b = SDL_MapRGB(G.screen->format, 0x64, 0x64, 0x64);
-
-    int w, h;
-    SDL_GetWindowSize(G.window, &w, &h);
-
-    SDL_FillRect(G.screen, NULL, grid_a);
-    for (int y = 0; y < (h/grid_size+1); ++y)
+    SDL_FillRect(G.screen, NULL, grid_color_a);
+    for (int y = 0; y < (G.height/BACKGROUND_GRID_SIZE+1); ++y)
     {
-        for (int x = ((y % 2 == 1)? 0 : grid_size); x < w; x += grid_size*2)
+        int const initial_x = (y % 2 == 1)? 0 : BACKGROUND_GRID_SIZE;
+        for (int x = initial_x; x < G.width; x += BACKGROUND_GRID_SIZE*2)
         {
             SDL_Rect const rect = {
-                .h = grid_size,
-                .w = grid_size,
+                .h = BACKGROUND_GRID_SIZE,
+                .w = BACKGROUND_GRID_SIZE,
                 .x = x,
-                .y = y * grid_size};
-            SDL_FillRect(G.screen, &rect, grid_b);
+                .y = y * BACKGROUND_GRID_SIZE};
+            SDL_FillRect(G.screen, &rect, grid_color_b);
         }
+    }
+}
+
+/* Draw IMG to the screen. */
+void draw_img(
+    struct sdldata G, struct Graphic const *img, struct DrawingData dd)
+{
+    int imgw = img->rect.w * dd.zoom,
+        imgh = img->rect.h * dd.zoom;
+
+    SDL_Rect position = {
+        .h = imgh,
+        .w = imgw,
+        .x = dd.offset_x,
+        .y = dd.offset_y};
+
+    SDL_BlitScaled(img->surface, NULL, G.screen, &position);
+}
+
+/* Ensure DD's offset_* fields don't put the image off the screen. */
+void bounds_check_offsets(
+    struct sdldata G, struct DrawingData *dd, int img_w, int img_h)
+{
+    int const scaled_img_w = img_w * dd->zoom,
+              scaled_img_h = img_h * dd->zoom;
+    if (G.width >= scaled_img_w)
+    {
+        if (dd->offset_x < 0)
+            dd->offset_x = 0;
+        if (dd->offset_x > G.width - scaled_img_w)
+            dd->offset_x = G.width - scaled_img_w;
+    }
+    else
+    {
+        if (dd->offset_x > 0)
+            dd->offset_x = 0;
+        if (dd->offset_x < G.width - scaled_img_w)
+            dd->offset_x = G.width - scaled_img_w;
+    }
+    if (G.height >= scaled_img_h)
+    {
+        if (dd->offset_y < 0)
+            dd->offset_y = 0;
+        if (dd->offset_y > G.height - scaled_img_h)
+            dd->offset_y = G.height - scaled_img_h;
+    }
+    else
+    {
+        if (dd->offset_y > 0)
+            dd->offset_y = 0;
+        if (dd->offset_y < G.height - scaled_img_h)
+            dd->offset_y = G.height - scaled_img_h;
     }
 }
 
@@ -317,6 +395,12 @@ int main(int argc, char *argv[])
     /* G holds all the SDL stuff. */
     struct sdldata G = init_sdl(gif.width, gif.height);
 
+    /* dd holds stuff for how/where to draw the image. */
+    struct DrawingData dd = {
+        .offset_x = G.width /2 - gif.width /2,
+        .offset_y = G.height/2 - gif.height/2,
+        .zoom = 1.0};
+
     /* Clear the screen. */
     clear_screen(G);
 
@@ -334,21 +418,13 @@ int main(int argc, char *argv[])
         if (screen_dirty)
         {
             struct Graphic *img = current_frame->data;
-            int w, h;
-            SDL_GetWindowSize(G.window, &w, &h);
-            SDL_Rect position = {
-                .h = img->rect.h,
-                .w = img->rect.w,
-                .x = (w / 2) - (img->rect.w / 2),
-                .y = (h / 2) - (img->rect.h / 2)
-            };
             clear_screen(G);
-            SDL_BlitSurface(img->surface, NULL, G.screen, &position);
+            draw_img(G, img, dd);
             if (SDL_UpdateWindowSurface(G.window))
             {
                 G.screen = SDL_GetWindowSurface(G.window);
                 clear_screen(G);
-                SDL_BlitSurface(img->surface, NULL, G.screen, &img->rect);
+                draw_img(G, img, dd);
                 if (SDL_UpdateWindowSurface(G.window))
                 {
                     SDL_LogError(
@@ -381,8 +457,50 @@ int main(int argc, char *argv[])
 
         case SDL_WINDOWEVENT:
             screen_dirty = true;
+            if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
+            {
+                G.width  = event.window.data1;
+                G.height = event.window.data2;
+                /* Recenter image when window changes size. */
+                dd.offset_x = G.width /2 - dd.zoom*gif.width /2;
+                dd.offset_y = G.height/2 - dd.zoom*gif.height/2;
+            }
+            break;
+
+        case SDL_KEYDOWN:
+            switch (event.key.keysym.sym)
+            {
+            case SDLK_KP_PLUS:
+                dd.zoom *= ZOOM_CHANGE_MULTIPLIER;
+                break;
+            case SDLK_KP_MINUS:
+                dd.zoom /= ZOOM_CHANGE_MULTIPLIER;
+                break;
+
+            case SDLK_KP_2:
+                dd.offset_y -= SHIFT_AMOUNT;
+                break;
+            case SDLK_KP_8:
+                dd.offset_y += SHIFT_AMOUNT;
+                break;
+            case SDLK_KP_6:
+                dd.offset_x -= SHIFT_AMOUNT;
+                break;
+            case SDLK_KP_4:
+                dd.offset_x += SHIFT_AMOUNT;
+                break;
+            }
+            break;
+
+        case SDL_MOUSEMOTION:
+            if (event.motion.state & SDL_BUTTON_LMASK)
+            {
+                dd.offset_x += event.motion.xrel;
+                dd.offset_y += event.motion.yrel;
+            }
             break;
         }
+        bounds_check_offsets(G, &dd, gif.width, gif.height);
     }
 
     free_graphics(images);
