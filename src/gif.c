@@ -262,6 +262,7 @@ void read_image_descriptor(FILE *file, struct GIF_Image *image)
     {
         deinterlace(image);
     }
+    free(compressed);
 }
 
 /* Fill EXTENSION with generic GIF extension data read from FILE. */
@@ -457,9 +458,7 @@ void read_GIF(FILE *file, GIF *gif)
             case GIF_Ext_ApplicationExtension:
                 struct GIF_ApplicationExt *appext = malloc(sizeof(*appext));
                 parse_application_ext(extension, appext);
-                linkedlist_append(
-                    &gif->app_extensions,
-                     linkedlist_new(appext));
+                linkedlist_append(&gif->app_extensions, linkedlist_new(appext));
                 break;
 
             default:
@@ -538,6 +537,10 @@ void free_gif(GIF gif)
         struct GIF_Graphic *g = node->data;
         if (g->is_img)
         {
+            if (g->extension)
+            {
+                free(g->extension);
+            }
             free(g->img.pixels);
             if (g->img.color_table != NULL
                 && g->img.color_table != gif.global_color_table)
@@ -551,6 +554,25 @@ void free_gif(GIF gif)
             free(g->plaintext.data);
         }
         LinkedList *next = node->next;
+        free(node->data);
+        free(node);
+        node = next;
+    }
+
+    for (LinkedList *node = gif.comments; node != NULL;)
+    {
+        LinkedList *next = node->next;
+        free(node->data);
+        free(node);
+        node = next;
+    }
+
+    for (LinkedList *node = gif.app_extensions; node != NULL;)
+    {
+        struct GIF_ApplicationExt *ext = node->data;
+        free(ext->data);
+        LinkedList *next = node->next;
+        free(node->data);
         free(node);
         node = next;
     }

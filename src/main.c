@@ -33,16 +33,24 @@
 /* SDL data for a GIF graphic. */
 struct Graphic
 {
+    SDL_Texture *texture;
+    int width, height;
+    size_t delay;
+};
+
+/* SurfaceGraphic */
+struct SurfaceGraphic
+{
     SDL_Rect rect;
     SDL_Surface *surface;
-    size_t delay;
 };
 
 /* SDL data for the app. */
 struct sdldata
 {
     SDL_Window *window;
-    SDL_Surface *screen;
+    SDL_Renderer *renderer;
+    SDL_Texture *bg_texture;
     int width, height;
 };
 
@@ -68,6 +76,45 @@ static int const SHIFT_AMOUNT = 2.5 * BACKGROUND_GRID_SIZE;
 /* How much to zoom in/out when +/- are pressed. */
 static int const ZOOM_CHANGE_MULTIPLIER = 2;
 
+
+/* Generate a background grid texture. */
+void generate_bg_grid(struct sdldata *G)
+{
+    SDL_Surface *grid_surf = SDL_CreateRGBSurfaceWithFormat(
+        0,
+        G->width, G->height,
+        32,
+        SDL_PIXELFORMAT_RGBA32);
+
+    Uint32 const grid_color_a = SDL_MapRGB(
+        grid_surf->format,
+        BACKGROUND_GRID_COLOR_A[0],
+        BACKGROUND_GRID_COLOR_A[1],
+        BACKGROUND_GRID_COLOR_A[2]);
+    Uint32 const grid_color_b = SDL_MapRGB(
+        grid_surf->format,
+        BACKGROUND_GRID_COLOR_B[0],
+        BACKGROUND_GRID_COLOR_B[1],
+        BACKGROUND_GRID_COLOR_B[2]);
+
+    SDL_FillRect(grid_surf, NULL, grid_color_a);
+    for (int y = 0; y < (G->height/BACKGROUND_GRID_SIZE+1); ++y)
+    {
+        int const initial_x = (y % 2 == 1)? 0 : BACKGROUND_GRID_SIZE;
+        for (int x = initial_x; x < G->width; x += BACKGROUND_GRID_SIZE*2)
+        {
+            SDL_Rect const rect = {
+                .h = BACKGROUND_GRID_SIZE,
+                .w = BACKGROUND_GRID_SIZE,
+                .x = x,
+                .y = y * BACKGROUND_GRID_SIZE};
+            SDL_FillRect(grid_surf, &rect, grid_color_b);
+        }
+    }
+    SDL_DestroyTexture(G->bg_texture);
+    G->bg_texture = SDL_CreateTextureFromSurface(G->renderer, grid_surf);
+    SDL_FreeSurface(grid_surf);
+}
 
 /* 1/100 second timer callback.  Used to trigger frame changes in animated
  * GIFs. */
@@ -103,35 +150,38 @@ struct sdldata init_sdl(int window_width, int window_height)
         exit(EXIT_FAILURE);
     }
 
-    data.screen = SDL_GetWindowSurface(data.window);
-    if (data.screen == NULL)
+    data.renderer = SDL_CreateRenderer(
+        data.window, -1, SDL_RENDERER_ACCELERATED);
+    if (data.renderer == NULL)
     {
         SDL_LogCritical(
             SDL_LOG_CATEGORY_APPLICATION,
-            "Failed to create screen -- %s\n",
+            "Failed to create renderer -- %s\n",
             SDL_GetError());
         exit(EXIT_FAILURE);
     }
     SDL_GetWindowSize(data.window, &data.width, &data.height);
+    generate_bg_grid(&data);
     return data;
 }
 
 /* Free SDL data. */
 void free_sdl(struct sdldata const *data)
 {
-    SDL_FreeSurface(data->screen);
+    SDL_DestroyTexture(data->bg_texture);
+    SDL_DestroyRenderer(data->renderer);
     SDL_DestroyWindow(data->window);
 }
 
-/* Create a Graphic from a GIF_Graphic. */
-struct Graphic *mk_SDLSurface_from_GIFImage(struct GIF_Graphic graphic)
+/* Create a SurfaceGraphic from a GIF_Graphic. */
+struct SurfaceGraphic *mk_SDLSurface_from_GIFImage(struct GIF_Graphic graphic)
 {
     if (!graphic.is_img)
     {
         return NULL;
     }
     struct GIF_Image image = graphic.img;
-    struct Graphic *out = malloc(sizeof(*out));
+    struct SurfaceGraphic *out = malloc(sizeof(*out));
     out->rect.x = image.left;
     out->rect.y = image.right;
     out->rect.w = image.width;
@@ -155,7 +205,6 @@ struct Graphic *mk_SDLSurface_from_GIFImage(struct GIF_Graphic graphic)
 
     if (graphic.extension)
     {
-        out->delay = graphic.extension->delay_time;
         if (graphic.extension->transparent_color_flag)
         {
             SDL_SetColorKey(
@@ -163,10 +212,6 @@ struct Graphic *mk_SDLSurface_from_GIFImage(struct GIF_Graphic graphic)
                 SDL_TRUE,
                 graphic.extension->transparent_color_idx);
         }
-    }
-    else
-    {
-        out->delay = 0;
     }
 
     struct GIF_ColorTable const *table = image.color_table;
@@ -200,7 +245,7 @@ struct Graphic *mk_SDLSurface_from_GIFImage(struct GIF_Graphic graphic)
 }
 
 /* Generate a linked list of Graphics from a linked list of GIF_Graphics. */
-LinkedList *graphics2surfaces(GIF gif)
+LinkedList *make_graphics(struct sdldata G, GIF gif)
 {
     SDL_Surface *frame = SDL_CreateRGBSurfaceWithFormat(
         0,
@@ -215,26 +260,27 @@ LinkedList *graphics2surfaces(GIF gif)
         struct GIF_Graphic *graphic = node->data;
         if (graphic->is_img)
         {
-            struct Graphic *g = mk_SDLSurface_from_GIFImage(*graphic);
+            struct SurfaceGraphic *g = mk_SDLSurface_from_GIFImage(*graphic);
             SDL_BlitSurface(g->surface, NULL, frame, &g->rect);
-            if (g->delay != 0)
+            if (graphic->extension)
             {
                 struct Graphic *frameout = malloc(sizeof(*frameout));
-                frameout->delay = g->delay;
-                frameout->rect.h = gif.height;
-                frameout->rect.w = gif.width;
-                frameout->rect.x = 0;
-                frameout->rect.y = 0;
-                frameout->surface = frame;
+                frameout->delay = graphic->extension->delay_time;
+                frameout->width = gif.width;
+                frameout->height = gif.height;
+                frameout->texture = SDL_CreateTextureFromSurface(
+                    G.renderer, frame);
                 linkedlist_append(&images, linkedlist_new(frameout));
                 if (node->next != NULL)
                 {
-                    frame = SDL_CreateRGBSurfaceWithFormat(
+                    SDL_Surface *newframe = SDL_CreateRGBSurfaceWithFormat(
                         0,
                         gif.width, gif.height,
                         32,
                         SDL_PIXELFORMAT_RGBA32);
-                    SDL_BlitSurface(frameout->surface, NULL, frame, NULL);
+                    SDL_BlitSurface(frame, NULL, newframe, NULL);
+                    SDL_FreeSurface(frame);
+                    frame = newframe;
                 }
                 else
                 {
@@ -253,12 +299,9 @@ LinkedList *graphics2surfaces(GIF gif)
     {
         struct Graphic *frameout = malloc(sizeof(*frameout));
         frameout->delay = 0;
-        frameout->rect.h = gif.height;
-        frameout->rect.w = gif.width;
-        frameout->rect.x = 0;
-        frameout->rect.y = 0;
-        frameout->surface = frame;
+        frameout->texture = SDL_CreateTextureFromSurface(G.renderer, frame);
         linkedlist_append(&images, linkedlist_new(frameout));
+        SDL_FreeSurface(frame);
     }
     /* Make the list circular, for free looping. */
     for (LinkedList *g = images; g != NULL; g = g->next)
@@ -278,10 +321,11 @@ void free_graphics(LinkedList *graphics)
     for (LinkedList *node = graphics->next; node != NULL;)
     {
         struct Graphic *graphic = node->data;
-        SDL_FreeSurface(graphic->surface);
+        SDL_DestroyTexture(graphic->texture);
         LinkedList *next = node->next;
+        free(graphic);
         free(node);
-        if (next == graphics)
+        if (node == graphics)
         {
             break;
         }
@@ -292,39 +336,15 @@ void free_graphics(LinkedList *graphics)
 /* Clear the screen. */
 void clear_screen(struct sdldata G)
 {
-    Uint32 const grid_color_a = SDL_MapRGB(
-        G.screen->format,
-        BACKGROUND_GRID_COLOR_A[0],
-        BACKGROUND_GRID_COLOR_A[1],
-        BACKGROUND_GRID_COLOR_A[2]);
-    Uint32 const grid_color_b = SDL_MapRGB(
-        G.screen->format,
-        BACKGROUND_GRID_COLOR_B[0],
-        BACKGROUND_GRID_COLOR_B[1],
-        BACKGROUND_GRID_COLOR_B[2]);
-
-    SDL_FillRect(G.screen, NULL, grid_color_a);
-    for (int y = 0; y < (G.height/BACKGROUND_GRID_SIZE+1); ++y)
-    {
-        int const initial_x = (y % 2 == 1)? 0 : BACKGROUND_GRID_SIZE;
-        for (int x = initial_x; x < G.width; x += BACKGROUND_GRID_SIZE*2)
-        {
-            SDL_Rect const rect = {
-                .h = BACKGROUND_GRID_SIZE,
-                .w = BACKGROUND_GRID_SIZE,
-                .x = x,
-                .y = y * BACKGROUND_GRID_SIZE};
-            SDL_FillRect(G.screen, &rect, grid_color_b);
-        }
-    }
+    SDL_RenderCopy(G.renderer, G.bg_texture, NULL, NULL);
 }
 
 /* Draw IMG to the screen. */
 void draw_img(
     struct sdldata G, struct Graphic const *img, struct DrawingData dd)
 {
-    int imgw = img->rect.w * dd.zoom,
-        imgh = img->rect.h * dd.zoom;
+    int imgw = img->width  * dd.zoom,
+        imgh = img->height * dd.zoom;
 
     SDL_Rect position = {
         .h = imgh,
@@ -332,7 +352,7 @@ void draw_img(
         .x = dd.offset_x,
         .y = dd.offset_y};
 
-    SDL_BlitScaled(img->surface, NULL, G.screen, &position);
+    SDL_RenderCopy(G.renderer, img->texture, NULL, &position);
 }
 
 /* Ensure DD's offset_* fields don't put the image off the screen. */
@@ -389,11 +409,11 @@ int main(int argc, char *argv[])
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER);
 
-    /* Generate SDL_Surfaces from the GIF's graphics. */
-    LinkedList *images = graphics2surfaces(gif);
-
     /* G holds all the SDL stuff. */
     struct sdldata G = init_sdl(gif.width, gif.height);
+
+    /* Generate SDL_Surfaces from the GIF's graphics. */
+    LinkedList *images = make_graphics(G, gif);
 
     /* dd holds stuff for how/where to draw the image. */
     struct DrawingData dd = {
@@ -420,19 +440,7 @@ int main(int argc, char *argv[])
             struct Graphic *img = current_frame->data;
             clear_screen(G);
             draw_img(G, img, dd);
-            if (SDL_UpdateWindowSurface(G.window))
-            {
-                G.screen = SDL_GetWindowSurface(G.window);
-                clear_screen(G);
-                draw_img(G, img, dd);
-                if (SDL_UpdateWindowSurface(G.window))
-                {
-                    SDL_LogError(
-                        SDL_LOG_CATEGORY_APPLICATION,
-                        "SDL_UpdateWindowSurface -- %s\n",
-                        SDL_GetError());
-                }
-            }
+            SDL_RenderPresent(G.renderer);
             screen_dirty = false;
         }
 
@@ -464,6 +472,7 @@ int main(int argc, char *argv[])
                 /* Recenter image when window changes size. */
                 dd.offset_x = G.width /2 - dd.zoom*gif.width /2;
                 dd.offset_y = G.height/2 - dd.zoom*gif.height/2;
+                generate_bg_grid(&G);
             }
             break;
 
@@ -490,6 +499,7 @@ int main(int argc, char *argv[])
                 dd.offset_x += SHIFT_AMOUNT;
                 break;
             }
+            screen_dirty = true;
             break;
 
         case SDL_MOUSEMOTION:
@@ -497,6 +507,7 @@ int main(int argc, char *argv[])
             {
                 dd.offset_x += event.motion.xrel;
                 dd.offset_y += event.motion.yrel;
+                screen_dirty = true;
             }
             break;
         }
@@ -506,7 +517,7 @@ int main(int argc, char *argv[])
     free_graphics(images);
 
     SDL_RemoveTimer(timer);
-    SDL_FreeSurface(G.screen);
+    SDL_DestroyRenderer(G.renderer);
     SDL_DestroyWindow(G.window);
     SDL_Quit();
 
