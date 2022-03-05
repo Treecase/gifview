@@ -46,7 +46,7 @@ struct SurfaceGraphic
 };
 
 /* SDL data for the app. */
-struct sdldata
+struct SDLData
 {
     SDL_Window *window;
     SDL_Renderer *renderer;
@@ -61,6 +61,29 @@ struct DrawingData
     int offset_x, offset_y;
 };
 
+/* Global app data. */
+struct GlobalData
+{
+    bool running;
+};
+
+/* Keybind data. */
+struct KeyBind
+{
+    void (*action)(void);
+    SDL_Keycode code;
+    Uint16 modmask;
+};
+
+/* Keybind action functions. */
+void zoom_in(void);
+void zoom_out(void);
+void reset_zoom(void);
+void shift_up(void);
+void shift_down(void);
+void shift_right(void);
+void shift_left(void);
+void quit(void);
 
 /* Size (in pixels) of background grid squares. */
 static int const BACKGROUND_GRID_SIZE = 8;
@@ -76,9 +99,40 @@ static int const SHIFT_AMOUNT = 2.5 * BACKGROUND_GRID_SIZE;
 /* How much to zoom in/out when +/- are pressed. */
 static int const ZOOM_CHANGE_MULTIPLIER = 2;
 
+/* dd holds stuff for how/where to draw the image. */
+static struct DrawingData dd = {
+    .offset_x = 0,
+    .offset_y = 0,
+    .zoom = 1.0
+};
+
+/* GD holds global running data. */
+static struct GlobalData GD = {
+    .running = true
+};
+
+/* List of keybinds. */
+static struct KeyBind binds[] = {
+    {zoom_in,       SDLK_UP,            0},
+    {zoom_in,       SDLK_KP_PLUS,       0},
+    {zoom_out,      SDLK_DOWN,          0},
+    {zoom_out,      SDLK_KP_MINUS,      0},
+    {reset_zoom,    SDLK_KP_MULTIPLY,   0},
+    {shift_up,      SDLK_KP_2,          0},
+    {shift_up,      SDLK_DOWN,          KMOD_CTRL},
+    {shift_down,    SDLK_KP_8,          0},
+    {shift_down,    SDLK_UP,            KMOD_CTRL},
+    {shift_right,   SDLK_KP_6,          0},
+    {shift_right,   SDLK_RIGHT,         KMOD_CTRL},
+    {shift_left,    SDLK_KP_4,          0},
+    {shift_left,    SDLK_LEFT,          KMOD_CTRL},
+    {quit,          SDLK_ESCAPE,        0},
+    {quit,          SDLK_q,             0},
+};
+
 
 /* Generate a background grid texture. */
-void generate_bg_grid(struct sdldata *G)
+void generate_bg_grid(struct SDLData *G)
 {
     SDL_Surface *grid_surf = SDL_CreateRGBSurfaceWithFormat(
         0,
@@ -132,9 +186,9 @@ Uint32 timer_callback(Uint32 interval, void *param)
 }
 
 /* Create SDL data. */
-struct sdldata init_sdl(int window_width, int window_height)
+struct SDLData init_sdl(int window_width, int window_height)
 {
-    struct sdldata data;
+    struct SDLData data;
 
     data.window = SDL_CreateWindow(
         "GIF View",
@@ -166,7 +220,7 @@ struct sdldata init_sdl(int window_width, int window_height)
 }
 
 /* Free SDL data. */
-void free_sdl(struct sdldata const *data)
+void free_sdl(struct SDLData const *data)
 {
     SDL_DestroyTexture(data->bg_texture);
     SDL_DestroyRenderer(data->renderer);
@@ -245,7 +299,7 @@ struct SurfaceGraphic *mk_SDLSurface_from_GIFImage(struct GIF_Graphic graphic)
 }
 
 /* Generate a linked list of Graphics from a linked list of GIF_Graphics. */
-LinkedList *make_graphics(struct sdldata G, GIF gif)
+LinkedList *make_graphics(struct SDLData G, GIF gif)
 {
     SDL_Surface *frame = SDL_CreateRGBSurfaceWithFormat(
         0,
@@ -334,14 +388,13 @@ void free_graphics(LinkedList *graphics)
 }
 
 /* Clear the screen. */
-void clear_screen(struct sdldata G)
+void clear_screen(struct SDLData G)
 {
     SDL_RenderCopy(G.renderer, G.bg_texture, NULL, NULL);
 }
 
 /* Draw IMG to the screen. */
-void draw_img(
-    struct sdldata G, struct Graphic const *img, struct DrawingData dd)
+void draw_img(struct SDLData G, struct Graphic const *img)
 {
     int imgw = img->width  * dd.zoom,
         imgh = img->height * dd.zoom;
@@ -356,40 +409,88 @@ void draw_img(
 }
 
 /* Ensure DD's offset_* fields don't put the image off the screen. */
-void bounds_check_offsets(
-    struct sdldata G, struct DrawingData *dd, int img_w, int img_h)
+void bounds_check_offsets(struct SDLData G, int img_w, int img_h)
 {
-    int const scaled_img_w = img_w * dd->zoom,
-              scaled_img_h = img_h * dd->zoom;
+    int const scaled_img_w = img_w * dd.zoom,
+              scaled_img_h = img_h * dd.zoom;
     if (G.width >= scaled_img_w)
     {
-        if (dd->offset_x < 0)
-            dd->offset_x = 0;
-        if (dd->offset_x > G.width - scaled_img_w)
-            dd->offset_x = G.width - scaled_img_w;
+        if (dd.offset_x < 0)
+            dd.offset_x = 0;
+        if (dd.offset_x > G.width - scaled_img_w)
+            dd.offset_x = G.width - scaled_img_w;
     }
     else
     {
-        if (dd->offset_x > 0)
-            dd->offset_x = 0;
-        if (dd->offset_x < G.width - scaled_img_w)
-            dd->offset_x = G.width - scaled_img_w;
+        if (dd.offset_x > 0)
+            dd.offset_x = 0;
+        if (dd.offset_x < G.width - scaled_img_w)
+            dd.offset_x = G.width - scaled_img_w;
     }
     if (G.height >= scaled_img_h)
     {
-        if (dd->offset_y < 0)
-            dd->offset_y = 0;
-        if (dd->offset_y > G.height - scaled_img_h)
-            dd->offset_y = G.height - scaled_img_h;
+        if (dd.offset_y < 0)
+            dd.offset_y = 0;
+        if (dd.offset_y > G.height - scaled_img_h)
+            dd.offset_y = G.height - scaled_img_h;
     }
     else
     {
-        if (dd->offset_y > 0)
-            dd->offset_y = 0;
-        if (dd->offset_y < G.height - scaled_img_h)
-            dd->offset_y = G.height - scaled_img_h;
+        if (dd.offset_y > 0)
+            dd.offset_y = 0;
+        if (dd.offset_y < G.height - scaled_img_h)
+            dd.offset_y = G.height - scaled_img_h;
     }
 }
+
+/* Increase zoom level. */
+void zoom_in(void)
+{
+    dd.zoom *= ZOOM_CHANGE_MULTIPLIER;
+}
+
+/* Decrease zoom level. */
+void zoom_out(void)
+{
+    dd.zoom /= ZOOM_CHANGE_MULTIPLIER;
+}
+
+/* Reset zoom level. */
+void reset_zoom(void)
+{
+    dd.zoom = 1.0;
+}
+
+/* Shift camera up. */
+void shift_up(void)
+{
+    dd.offset_y -= SHIFT_AMOUNT;
+}
+
+/* Shift camera down. */
+void shift_down(void)
+{
+    dd.offset_y += SHIFT_AMOUNT;
+}
+
+/* Shift camera right. */
+void shift_right(void)
+{
+    dd.offset_x -= SHIFT_AMOUNT;
+}
+
+/* Shift camera left. */
+void shift_left(void)
+{
+    dd.offset_x += SHIFT_AMOUNT;
+}
+
+/* Quit the app. */
+void quit(void)
+{
+    GD.running = false;
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -410,16 +511,15 @@ int main(int argc, char *argv[])
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER);
 
     /* G holds all the SDL stuff. */
-    struct sdldata G = init_sdl(gif.width, gif.height);
+    struct SDLData G = init_sdl(gif.width, gif.height);
 
     /* Generate SDL_Surfaces from the GIF's graphics. */
     LinkedList *images = make_graphics(G, gif);
 
-    /* dd holds stuff for how/where to draw the image. */
-    struct DrawingData dd = {
-        .offset_x = G.width /2 - gif.width /2,
-        .offset_y = G.height/2 - gif.height/2,
-        .zoom = 1.0};
+    /* Set initial dd settings. */
+    dd.offset_x = G.width /2 - gif.width /2;
+    dd.offset_y = G.height/2 - gif.height/2;
+    dd.zoom = 1.0;
 
     /* Clear the screen. */
     clear_screen(G);
@@ -432,14 +532,13 @@ int main(int argc, char *argv[])
     size_t timer_increment = 0;
 
     bool screen_dirty = true;
-    bool running = true;
-    while (running)
+    while (GD.running)
     {
         if (screen_dirty)
         {
             struct Graphic *img = current_frame->data;
             clear_screen(G);
-            draw_img(G, img, dd);
+            draw_img(G, img);
             SDL_RenderPresent(G.renderer);
             screen_dirty = false;
         }
@@ -449,7 +548,7 @@ int main(int argc, char *argv[])
         switch (event.type)
         {
         case SDL_QUIT:
-            running = false;
+            quit();
             break;
 
         case SDL_USEREVENT:
@@ -477,27 +576,17 @@ int main(int argc, char *argv[])
             break;
 
         case SDL_KEYDOWN:
-            switch (event.key.keysym.sym)
+            Uint16 mask = event.key.keysym.mod;
+            for (size_t i = 0; i < sizeof(binds)/sizeof(*binds); ++i)
             {
-            case SDLK_KP_PLUS:
-                dd.zoom *= ZOOM_CHANGE_MULTIPLIER;
-                break;
-            case SDLK_KP_MINUS:
-                dd.zoom /= ZOOM_CHANGE_MULTIPLIER;
-                break;
-
-            case SDLK_KP_2:
-                dd.offset_y -= SHIFT_AMOUNT;
-                break;
-            case SDLK_KP_8:
-                dd.offset_y += SHIFT_AMOUNT;
-                break;
-            case SDLK_KP_6:
-                dd.offset_x -= SHIFT_AMOUNT;
-                break;
-            case SDLK_KP_4:
-                dd.offset_x += SHIFT_AMOUNT;
-                break;
+                if (binds[i].code == event.key.keysym.sym)
+                {
+                    if (   (binds[i].modmask == 0 && mask == 0)
+                        || (binds[i].modmask != 0 && (binds[i].modmask & mask)))
+                    {
+                        binds[i].action();
+                    }
+                }
             }
             screen_dirty = true;
             break;
@@ -511,14 +600,13 @@ int main(int argc, char *argv[])
             }
             break;
         }
-        bounds_check_offsets(G, &dd, gif.width, gif.height);
+        bounds_check_offsets(G, gif.width, gif.height);
     }
 
     free_graphics(images);
 
     SDL_RemoveTimer(timer);
-    SDL_DestroyRenderer(G.renderer);
-    SDL_DestroyWindow(G.window);
+    free_sdl(&G);
     SDL_Quit();
 
     free_gif(gif);
