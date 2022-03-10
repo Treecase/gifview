@@ -40,4 +40,7 @@ void linkedlist_append(LinkedList **head, LinkedList *end);
 int safe_fread(void *restrict ptr, size_t size, size_t n,
                FILE *restrict stream);
 
+/* Concatenate two strings, returning the result in a newly-allocated string. */
+char *estrcat(char const *prefix, char const *suffix);
+
 #endif  // GIFVIEW_UTIL_H

@@ -18,8 +18,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "gif.h"
 #include "args.h"
+#include "gif.h"
+#include "keybinds.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -67,13 +68,6 @@ struct GlobalData
     bool running;
 };
 
-/* Keybind data. */
-struct KeyBind
-{
-    void (*action)(void);
-    SDL_Keycode code;
-    Uint16 modmask;
-};
 
 /* Keybind action functions. */
 void zoom_in(void);
@@ -111,24 +105,20 @@ static struct GlobalData GD = {
     .running = true
 };
 
-/* List of keybinds. */
-static struct KeyBind binds[] = {
-    {zoom_in,       SDLK_UP,            0},
-    {zoom_in,       SDLK_KP_PLUS,       0},
-    {zoom_out,      SDLK_DOWN,          0},
-    {zoom_out,      SDLK_KP_MINUS,      0},
-    {reset_zoom,    SDLK_KP_MULTIPLY,   0},
-    {shift_up,      SDLK_KP_2,          0},
-    {shift_up,      SDLK_DOWN,          KMOD_CTRL},
-    {shift_down,    SDLK_KP_8,          0},
-    {shift_down,    SDLK_UP,            KMOD_CTRL},
-    {shift_right,   SDLK_KP_6,          0},
-    {shift_right,   SDLK_RIGHT,         KMOD_CTRL},
-    {shift_left,    SDLK_KP_4,          0},
-    {shift_left,    SDLK_LEFT,          KMOD_CTRL},
-    {quit,          SDLK_ESCAPE,        0},
-    {quit,          SDLK_q,             0},
+/* List of keybindable actions. */
+struct Action actions[] = {
+    {"zoom_in",     zoom_in,     NULL, NULL, NULL},
+    {"zoom_out",    zoom_out,    NULL, NULL, NULL},
+    {"reset_zoom",  reset_zoom,  NULL, NULL, NULL},
+    {"shift_up",    shift_up,    NULL, NULL, NULL},
+    {"shift_down",  shift_down,  NULL, NULL, NULL},
+    {"shift_right", shift_right, NULL, NULL, NULL},
+    {"shift_left",  shift_left,  NULL, NULL, NULL},
+    {"quit",        quit,        NULL, NULL, NULL},
 };
+
+/* Length of actions array. */
+size_t actions_count = sizeof(actions) / sizeof(*actions);
 
 
 /* Generate a background grid texture. */
@@ -491,6 +481,68 @@ void quit(void)
     GD.running = false;
 }
 
+/* Return true if BIND matches EVENT. */
+bool keybind_ispressed(struct KeyBind const *bind, SDL_Keysym event)
+{
+    if (bind == NULL || bind->code != event.sym)
+    {
+        return false;
+    }
+
+    if (bind->modmask == KMOD_NONE)
+    {
+        return event.mod == KMOD_NONE;
+    }
+
+    SDL_Keymod const othermask = KMOD_NUM | KMOD_CAPS | KMOD_MODE | KMOD_SCROLL;
+
+#define FILTERMASK(b, e, filter) ((b & filter) == (e & filter))
+    /* We can't just check if the masks are equal, because this would require
+     * the user to press the left AND right modifier keys.  This is probably not
+     * what the event specifiction actually wants, so we have to do some extra
+     * checks to handle this correctly.  Here we do the naive behaviour, which
+     * works fine if the event specifies that only left/right side should work.
+     */
+    bool shift = FILTERMASK(bind->modmask, event.mod, KMOD_SHIFT);
+    bool ctrl = FILTERMASK(bind->modmask, event.mod, KMOD_CTRL);
+    bool alt = FILTERMASK(bind->modmask, event.mod, KMOD_ALT);
+    bool meta = FILTERMASK(bind->modmask, event.mod, KMOD_GUI);
+    bool other = FILTERMASK(bind->modmask, event.mod, othermask);
+#undef FILTERMASK
+
+    /* The above booleans will require BOTH sides to be pressed if the event
+     * says that either side is fine, which is not what we want.  To do the
+     * Right Thing, we check here if the event spec says either side is fine,
+     * and check only that *one of* the sides is pressed. */
+    if ((bind->modmask & KMOD_SHIFT) == KMOD_SHIFT)
+    {
+        shift = event.mod & KMOD_SHIFT;
+    }
+    if ((bind->modmask & KMOD_CTRL) == KMOD_CTRL)
+    {
+        ctrl = event.mod & KMOD_CTRL;
+    }
+    if ((bind->modmask & KMOD_ALT) == KMOD_ALT)
+    {
+        alt = event.mod & KMOD_ALT;
+    }
+    if ((bind->modmask & KMOD_GUI) == KMOD_GUI)
+    {
+        meta = event.mod & KMOD_GUI;
+    }
+
+    return shift && ctrl && alt && meta && other;
+}
+
+/* Return true if any of ACTION's KeyBinds matches EVENT. */
+bool action_ispressed(struct Action action, SDL_Keysym event)
+{
+    return (
+        keybind_ispressed(action.primary, event)
+        || keybind_ispressed(action.secondary, event)
+        || keybind_ispressed(action.tertiary, event));
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -512,6 +564,8 @@ int main(int argc, char *argv[])
 
     /* G holds all the SDL stuff. */
     struct SDLData G = init_sdl(gif.width, gif.height);
+
+    init_keybinds();
 
     /* Generate SDL_Surfaces from the GIF's graphics. */
     LinkedList *images = make_graphics(G, gif);
@@ -576,16 +630,11 @@ int main(int argc, char *argv[])
             break;
 
         case SDL_KEYDOWN:
-            Uint16 mask = event.key.keysym.mod;
-            for (size_t i = 0; i < sizeof(binds)/sizeof(*binds); ++i)
+            for (size_t i = 0; i < actions_count; ++i)
             {
-                if (binds[i].code == event.key.keysym.sym)
+                if (action_ispressed(actions[i], event.key.keysym))
                 {
-                    if (   (binds[i].modmask == 0 && mask == 0)
-                        || (binds[i].modmask != 0 && (binds[i].modmask & mask)))
-                    {
-                        binds[i].action();
-                    }
+                    actions[i].action();
                 }
             }
             screen_dirty = true;

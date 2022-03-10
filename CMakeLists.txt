@@ -16,6 +16,7 @@ set(srcs
     "src/util.c"
     "src/lzw.c"
     "src/args.c"
+    "src/keybinds.c"
 )
 add_executable(${PROJECT_NAME} ${srcs})
 
