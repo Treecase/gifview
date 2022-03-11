@@ -69,6 +69,6 @@ char *estrcat(char const *prefix, char const *suffix)
     char *out = malloc(prefix_len + suffix_len + 1);
     memcpy(out, prefix, prefix_len);
     memcpy(out + prefix_len, suffix, suffix_len);
-    out[prefix_len + suffix_len + 1] = '\0';
+    out[prefix_len + suffix_len] = '\0';
     return out;
 }

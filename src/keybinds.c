@@ -267,6 +267,7 @@ void parse_keyconf(FILE *file)
                     line_counter, i);
         }
     }
+    free(line);
 }
 
 
@@ -278,18 +279,21 @@ void set_keybind(
     {
         return;
     }
+    free(action->primary);
     action->primary = NULL;
     if (primary.code != SDLK_UNKNOWN)
     {
         action->primary = malloc(sizeof(primary));
         memcpy(action->primary, &primary, sizeof(primary));
     }
+    free(action->secondary);
     action->secondary = NULL;
     if (secondary.code != SDLK_UNKNOWN)
     {
         action->secondary = malloc(sizeof(secondary));
         memcpy(action->secondary, &secondary, sizeof(secondary));
     }
+    free(action->tertiary);
     action->tertiary = NULL;
     if (tertiary.code != SDLK_UNKNOWN)
     {
@@ -338,6 +342,7 @@ void init_keybinds(void)
     }
 
     FILE *conf = fopen(confpath, "r");
+    free(confpath);
     if (conf == NULL)
     {
         conf = fopen(GLOBAL_KEYCONF_PATH, "r");
@@ -347,7 +352,6 @@ void init_keybinds(void)
             return;
         }
     }
-    free(confpath);
 
     parse_keyconf(conf);
     fclose(conf);

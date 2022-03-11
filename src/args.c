@@ -29,19 +29,23 @@
 
 void usage(char const *name, bool print_long)
 {
-    printf("Usage: %s [OPTIONS] FILE\n", name);
+    printf("Usage: %s [OPTION]... FILE\n", name);
     if (print_long)
     {
         puts("\
-Display GIF images.\
-\
-OPTIONS\
-      --help     display this help and exit\
-      --version  output version information and exit\
-\
-Report bugs to: <https://github.com/Treecase/gifview/issues>\
+Display GIF images.\n\
+\n\
+OPTIONS\n\
+      --help     display this help and exit\n\
+      --version  output version information and exit\n\
+\n\
+Report bugs to: <https://github.com/Treecase/gifview/issues>\n\
 pkg home page: <https://github.com/Treecase/gifview>\
         ");
+    }
+    else
+    {
+        printf("Try '%s --help' for more information.\n", name);
     }
 }
 
@@ -53,9 +57,9 @@ void version(void)
         GIFVIEW_VERSION_MINOR,
         GIFVIEW_VERSION_PATCH);
     puts("\
-Copyright (C) 2022 Trevor Last\
-License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>\
-This is free software: you are free to change and redistribute it.\
+Copyright (C) 2022 Trevor Last\n\
+License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>\n\
+This is free software: you are free to change and redistribute it.\n\
 There is NO WARRANTY, to the extent permitted by law.\
     ");
 }
@@ -113,14 +117,12 @@ char const *parse_args(int argc, char *argv[])
 
     if (optind >= argc)
     {
-        fputs("No filename given!\n", stderr);
         usage(argv[0], false);
         exit(EXIT_FAILURE);
     }
     else if (optind + 1 != argc)
     {
         /* TODO: Handle this properly instead of just exiting. */
-        fputs("More than one filename given!\n", stderr);
         usage(argv[0], false);
         exit(EXIT_FAILURE);
     }

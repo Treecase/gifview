@@ -24,3 +24,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC "${PROJECT_BINARY_DIR}")
 
 # link SDL2
 target_link_libraries(${PROJECT_NAME} SDL2)
+
+include(GNUInstallDirs)
+install(TARGETS ${PROJECT_NAME}
+        RUNTIME
+         DESTINATION ${CMAKE_INSTALL_BINDIR})
