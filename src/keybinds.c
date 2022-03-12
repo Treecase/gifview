@@ -30,7 +30,7 @@ extern size_t actions_count;
 
 /* Path to the global key config file. */
 static char const *const GLOBAL_KEYCONF_PATH =\
-    "/etc/"GIFVIEW_PROGRAM_NAME"/keys.conf";
+    GIFVIEW_GLOBAL_CONFIG_DIR"/keys.conf";
 
 /* Path to the local key config file (starting from $HOME). */
 static char const *const LOCAL_KEYCONF_PATH =\
@@ -117,48 +117,100 @@ int parse_keybind(char const *keyname, struct KeyBind *bind)
     return 0;
 }
 
+/* keys.conf parser data. */
+struct Parser
+{
+    size_t line_count;
+    char *line;
+    ssize_t i;
+    ssize_t length;
+};
+
+/* Consume characters from P until a non-whitespace character is found.
+ * P will be left pointing to said character. */
+void skip_whitespace(struct Parser *p)
+{
+    for (; p->i < p->length && isspace(p->line[p->i]); p->i++)
+    {
+    }
+}
+
+/* Consume characters from P until a whitespace character is found, or if P
+ * points to a " character, until another " is found. P will be left pointing
+ * to the whitespace character, or the next character after the ". */
+int read_key(struct Parser *p, char **key)
+{
+    int err = 0;
+    ssize_t tok_start = p->i;
+    if (p->line[p->i] == '"')
+    {
+        tok_start = ++p->i;
+        while (p->i < p->length && p->line[p->i++] != '"')
+        {
+        }
+        while (!isspace(p->line[p->i]))
+        {
+            p->i++;
+            err = 1;
+        }
+    }
+    else
+    {
+        while (p->i < p->length && !isspace(p->line[p->i++]))
+        {
+        }
+    }
+    *key = strndup(p->line+tok_start, p->i-tok_start-1);
+    return err;
+}
+
 /* Parse a keyconf file, updating the keybinds in the global `actions` array. */
 void parse_keyconf(FILE *file)
 {
-    char *line = NULL;
-    size_t size = 0;
-    ssize_t length = 0;
+    struct Parser p = {
+        .line_count = 0,
+        .line = NULL,
+        .i = 0,
+        .length = 0
+    };
 
-    size_t line_counter = 0;
-    while ((length = getline(&line, &size, file)) != -1)
+    size_t size = 0;
+    while ((p.length = getline(&p.line, &size, file)) != -1)
     {
-        line_counter++;
-        ssize_t i = 0;
+        p.line_count++;
+        p.i = 0;
 
         /* Skip leading whitespace. */
-        while (i < length && isspace(line[i++]))
-        {
-        }
-        if (i >= length)
+        skip_whitespace(&p);
+        if (p.i >= p.length)
         {
             /* Blank line. */
             continue;
         }
 
+        /* Skip comment lines. */
+        if (p.line[p.i] == '#')
+        {
+            continue;
+        }
+
         /* Read the action. */
-        ssize_t tok_start = i;
-        while (i < length && !isspace(line[i++]))
+        ssize_t tok_start = p.i;
+        while (p.i < p.length && !isspace(p.line[p.i++]))
         {
         }
-        char *action_name = strndup(line+tok_start-1, i-tok_start);
+        char *action_name = strndup(p.line+tok_start, p.i-tok_start-1);
         struct Action *action = NULL;
         if (parse_action(action_name, &action))
         {
             fprintf(stderr, "ERROR:%zu,%zu -- Invalid action '%s'\n",
-                line_counter, tok_start, action_name);
+                p.line_count, tok_start, action_name);
         }
         free(action_name);
 
         /* Inter-token whitespace. */
-        while (i < length && isspace(line[i++]))
-        {
-        }
-        if (i >= length)
+        skip_whitespace(&p);
+        if (p.i >= p.length)
         {
             /* No keys, so the action is unbound. */
             set_keybind(action, UNBOUND, UNBOUND, UNBOUND);
@@ -166,108 +218,96 @@ void parse_keyconf(FILE *file)
         }
 
         /* Read key 1. */
-        tok_start = i;
-        while (i < length && !isspace(line[i++]))
-        {
-        }
-        char *key1 = strndup(line+tok_start-1, i-tok_start);
+        char *key1 = NULL;
         struct KeyBind k1;
-        int err = parse_keybind(key1, &k1);
-        if (err == 1)
+        int err = read_key(&p, &key1);
+        err = parse_keybind(key1, &k1);
+        switch (err)
         {
+        case 1:
             fprintf(stderr, "ERROR:%zu,%zu -- Invalid modifier '%s'\n",
-                line_counter, tok_start, key1);
-        }
-        else if (err == 2)
-        {
+                p.line_count, tok_start, key1);
+            break;
+        case 2:
             fprintf(stderr, "ERROR:%zu,%zu -- Invalid keyname '%s' (%s)\n",
-                line_counter, tok_start, key1, SDL_GetError());
+                p.line_count, tok_start, key1, SDL_GetError());
+            break;
         }
-        free(key1);
-        if (i >= length)
+        if (p.i >= p.length)
         {
             set_keybind(action, k1, UNBOUND, UNBOUND);
             continue;
         }
+        free(key1);
 
         /* Inter-token whitespace. */
-        while (i < length && isspace(line[i++]))
-        {
-        }
-        if (i >= length)
+        skip_whitespace(&p);
+        if (p.i >= p.length)
         {
             set_keybind(action, k1, UNBOUND, UNBOUND);
             continue;
         }
 
         /* Read key 2. */
-        tok_start = i;
-        while (i < length && !isspace(line[i++]))
-        {
-        }
-        char *key2 = strndup(line+tok_start-1, i-tok_start);
+        char *key2 = NULL;
         struct KeyBind k2;
+        err = read_key(&p, &key2);
         err = parse_keybind(key2, &k2);
-        if (err == 1)
+        switch (err)
         {
+        case 1:
             fprintf(stderr, "ERROR:%zu,%zu -- Invalid modifier '%s'\n",
-                line_counter, tok_start, key2);
-        }
-        else if (err == 2)
-        {
+                p.line_count, tok_start, key2);
+            break;
+        case 2:
             fprintf(stderr, "ERROR:%zu,%zu -- Invalid keyname '%s' (%s)\n",
-                line_counter, tok_start, key2, SDL_GetError());
+                p.line_count, tok_start, key2, SDL_GetError());
+            break;
         }
         free(key2);
-        if (i >= length)
+        if (p.i >= p.length)
         {
             set_keybind(action, k1, k2, UNBOUND);
             continue;
         }
 
         /* Inter-token whitespace. */
-        while (i < length && isspace(line[i++]))
-        {
-        }
-        if (i >= length)
+        skip_whitespace(&p);
+        if (p.i >= p.length)
         {
             set_keybind(action, k1, k2, UNBOUND);
             continue;
         }
 
         /* Read key 3. */
-        tok_start = i;
-        while (i < length && !isspace(line[i++]))
-        {
-        }
-        char *key3 = strndup(line+tok_start-1, i-tok_start);
+        char *key3 = NULL;
         struct KeyBind k3;
+        err = read_key(&p, &key3);
         err = parse_keybind(key3, &k3);
-        if (err == 1)
+        switch (err)
         {
+        case 1:
             fprintf(stderr, "ERROR:%zu,%zu -- Invalid modifier '%s'\n",
-                line_counter, tok_start, key3);
-        }
-        else if (err == 2)
-        {
+                p.line_count, tok_start, key3);
+            break;
+        case 2:
             fprintf(stderr, "ERROR:%zu,%zu -- Invalid keyname '%s' (%s)\n",
-                line_counter, tok_start, key3, SDL_GetError());
+                p.line_count, tok_start, key3, SDL_GetError());
+            break;
         }
         free(key3);
         set_keybind(action, k1, k2, k3);
 
         /* Make sure the rest of the line is blank. */
-        while (i < length && isspace(line[i++]))
-        {
-        }
-        if (i < length)
+        skip_whitespace(&p);
+        if (p.i < p.length)
         {
             fprintf(stderr,
                 "ERROR:%zu,%zu -- Trailing non-whitespace characters",
-                    line_counter, i);
+                    p.line_count, p.i);
         }
     }
-    free(line);
+    free(p.line);
 }
 
 
@@ -331,28 +371,25 @@ void init_keybinds(void)
         set_keybind(action, def->a, def->b, def->c);
     }
 
-    /* Read keybindings from config files. First try the one at
-     * ${HOME}/LOCAL_KEYCONF_PATH, otherwise falling back on the one at
-     * GLOBAL_KEYCONF_PATH. */
+    /* Start with global config... */
+    FILE *conf = fopen(GLOBAL_KEYCONF_PATH, "r");
+    if (conf)
+    {
+        parse_keyconf(conf);
+        fclose(conf);
+    }
+
+    /* ..And now the local config. */
     char const *home = getenv("HOME");
-    char *confpath = NULL;
     if (home)
     {
-        confpath = estrcat(home, LOCAL_KEYCONF_PATH);
-    }
-
-    FILE *conf = fopen(confpath, "r");
-    free(confpath);
-    if (conf == NULL)
-    {
-        conf = fopen(GLOBAL_KEYCONF_PATH, "r");
-        if (conf == NULL)
+        char *confpath = estrcat(home, LOCAL_KEYCONF_PATH);
+        conf = fopen(confpath, "r");
+        if (conf)
         {
-            /* No configs, use default keybinds. */
-            return;
+            parse_keyconf(conf);
+            fclose(conf);
         }
+        free(confpath);
     }
-
-    parse_keyconf(conf);
-    fclose(conf);
 }

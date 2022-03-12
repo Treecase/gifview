@@ -30,4 +30,7 @@
 /* GIFView patch version number */
 #define GIFVIEW_VERSION_PATCH   @gifview_VERSION_PATCH@
 
+/* GIFView global config file location */
+#define GIFVIEW_GLOBAL_CONFIG_DIR   "@CMAKE_INSTALL_PREFIX@/@keysconf_dir@"
+
 #endif // _GIFVIEW_CONFIG_H
