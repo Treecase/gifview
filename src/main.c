@@ -187,22 +187,14 @@ struct SDLData init_sdl(int window_width, int window_height)
         SDL_WINDOW_RESIZABLE);
     if (data.window == NULL)
     {
-        SDL_LogCritical(
-            SDL_LOG_CATEGORY_APPLICATION,
-            "Failed to create window -- %s\n",
-            SDL_GetError());
-        exit(EXIT_FAILURE);
+        fatal("Failed to create window: %s\n", SDL_GetError());
     }
 
     data.renderer = SDL_CreateRenderer(
         data.window, -1, SDL_RENDERER_ACCELERATED);
     if (data.renderer == NULL)
     {
-        SDL_LogCritical(
-            SDL_LOG_CATEGORY_APPLICATION,
-            "Failed to create renderer -- %s\n",
-            SDL_GetError());
-        exit(EXIT_FAILURE);
+        fatal("Failed to create renderer -- %s\n", SDL_GetError());
     }
     SDL_GetWindowSize(data.window, &data.width, &data.height);
     generate_bg_grid(&data);
@@ -239,10 +231,7 @@ struct SurfaceGraphic *mk_SDLSurface_from_GIFImage(struct GIF_Graphic graphic)
 
     if (out->surface == NULL)
     {
-        SDL_LogError(
-            SDL_LOG_CATEGORY_APPLICATION,
-            "SDL_CreateRGBSurfaceWithFormatFrom -- %s\n",
-            SDL_GetError());
+        error("SDL_CreateRGBSurfaceWithFormatFrom: %s\n", SDL_GetError());
         free(out);
         return NULL;
     }
@@ -261,9 +250,7 @@ struct SurfaceGraphic *mk_SDLSurface_from_GIFImage(struct GIF_Graphic graphic)
     struct GIF_ColorTable const *table = image.color_table;
     if (table == NULL)
     {
-        SDL_LogWarn(
-            SDL_LOG_CATEGORY_APPLICATION,
-            "mk_SDLSurface_from_GIFImage -- Image has no palette!\n");
+        warn("mk_SDLSurface_from_GIFImage: Image has no palette!\n");
         return out;
     }
     SDL_Color *colors = malloc(sizeof(SDL_Color) * table->size);
@@ -279,10 +266,7 @@ struct SurfaceGraphic *mk_SDLSurface_from_GIFImage(struct GIF_Graphic graphic)
             out->surface->format->palette, colors, 0, table->size)
         != 0)
     {
-        SDL_LogError(
-            SDL_LOG_CATEGORY_APPLICATION,
-            "SDL_SetPaletteColors -- %s\n",
-            SDL_GetError());
+        error("SDL_SetPaletteColors -- %s\n", SDL_GetError());
     }
     free(colors);
     return out;

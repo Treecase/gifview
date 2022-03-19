@@ -69,10 +69,7 @@ void read_data_sub_blocks(FILE *file, size_t *data_size, uint8_t **data)
         uint8_t block_size = 0;
 
         /* get the number of bytes in the next block */
-        if (safe_fread(&block_size, 1, 1, file))
-        {
-            exit(EXIT_FAILURE);
-        }
+        efread(&block_size, 1, 1, file);
 
         /* a block_size of 0 means we're done */
         if (block_size == 0)
@@ -90,10 +87,7 @@ void read_data_sub_blocks(FILE *file, size_t *data_size, uint8_t **data)
         }
 
         /* read the data block */
-        if (safe_fread(*data + *data_size, 1, block_size, file))
-        {
-            exit(EXIT_FAILURE);
-        }
+        efread(*data + *data_size, 1, block_size, file);
         *data_size += block_size;
     }
 }
@@ -105,13 +99,12 @@ void read_header(FILE *file, enum GIF_Version *version)
     char header[6];
 
     /* read header */
-    if (safe_fread(header, 1, 6, file)) exit(EXIT_FAILURE);
+    efread(header, 1, 6, file);
 
     /* check signature */
     if (strncmp(header, "GIF", 3) != 0)
     {
-        fprintf(stderr, "read_header: bad signature '%.3s'\n", header);
-        exit(EXIT_FAILURE);
+        fatal("bad signature '%.3s'\n", header);
     }
 
     /* check version */
@@ -126,7 +119,7 @@ void read_header(FILE *file, enum GIF_Version *version)
     else
     {
         *version = GIF_Version_Unknown;
-        printf("WARNING: read_header -- unknown version '%.3s'\n", header + 3);
+        warn("unknown version '%.3s'\n", header + 3);
     }
 }
 
@@ -144,7 +137,7 @@ void read_color_table(FILE *file, size_t size, uint8_t **table)
         exit(EXIT_FAILURE);
     }
     /* read the table data */
-    if (safe_fread(*table, 3, size, file))   exit(EXIT_FAILURE);
+    efread(*table, 3, size, file);
 }
 
 /* Read a Logical Screen Descriptor from FILE, storing the data in GIF. */
@@ -153,11 +146,11 @@ void read_logical_screen_descriptor(FILE *file, struct GIF *gif)
     uint8_t fields;
 
     /* read all the LSD data */
-    if (safe_fread(&gif->width, 2, 1, file))                exit(EXIT_FAILURE);
-    if (safe_fread(&gif->height, 2, 1, file))               exit(EXIT_FAILURE);
-    if (safe_fread(&fields, 1, 1, file))                    exit(EXIT_FAILURE);
-    if (safe_fread(&gif->bg_color_index, 1, 1, file))       exit(EXIT_FAILURE);
-    if (safe_fread(&gif->pixel_aspect_ratio, 1, 1, file))   exit(EXIT_FAILURE);
+    efread(&gif->width, 2, 1, file);
+    efread(&gif->height, 2, 1, file);
+    efread(&fields, 1, 1, file);
+    efread(&gif->bg_color_index, 1, 1, file);
+    efread(&gif->pixel_aspect_ratio, 1, 1, file);
 
     /* grab all the packed fields */
     uint8_t gct_exponent = fields & 7;
@@ -226,11 +219,11 @@ void read_image_descriptor(FILE *file, struct GIF_Image *image)
 {
     uint8_t fields;
 
-    safe_fread(&image->left, 2, 1, file);
-    safe_fread(&image->right, 2, 1, file);
-    safe_fread(&image->width, 2, 1, file);
-    safe_fread(&image->height, 2, 1, file);
-    safe_fread(&fields, 1, 1, file);
+    efread(&image->left, 2, 1, file);
+    efread(&image->right, 2, 1, file);
+    efread(&image->width, 2, 1, file);
+    efread(&image->height, 2, 1, file);
+    efread(&fields, 1, 1, file);
 
     uint8_t lct_exponent = fields & 7;
     bool sort_flag = (fields >> 5) & 1;
@@ -253,7 +246,7 @@ void read_image_descriptor(FILE *file, struct GIF_Image *image)
 
     /* Read the Table-Based Image Data following the Image Descriptor. */
     uint8_t min_code_size;
-    if (safe_fread(&min_code_size, 1, 1, file)) exit(EXIT_FAILURE);
+    efread(&min_code_size, 1, 1, file);
     uint8_t *compressed = NULL;
     size_t compressed_size = 0;
     read_data_sub_blocks(file, &compressed_size, &compressed);
@@ -268,7 +261,7 @@ void read_image_descriptor(FILE *file, struct GIF_Image *image)
 /* Fill EXTENSION with generic GIF extension data read from FILE. */
 void read_extension(FILE *file, struct GenericExtension *extension)
 {
-    if (safe_fread(&extension->label, 1, 1, file))  exit(EXIT_FAILURE);
+    efread(&extension->label, 1, 1, file);
     read_data_sub_blocks(file, &extension->data_size, &extension->data);
 }
 
@@ -389,7 +382,7 @@ void read_GIF(FILE *file, GIF *gif)
     {
         /* get the block identifier for the next block */
         uint8_t code = 0;
-        safe_fread(&code, 1, 1, file);
+        efread(&code, 1, 1, file);
         switch (code)
         {
         case GIF_Block_Extension:
@@ -408,7 +401,7 @@ void read_GIF(FILE *file, GIF *gif)
             /* Graphic Block with extension */
             case GIF_Ext_GraphicControl:
                 uint8_t code = 0;
-                safe_fread(&code, 1, 1, file);
+                efread(&code, 1, 1, file);
                 switch (code)
                 {
                 /* expecting a PlainText... */
@@ -426,13 +419,9 @@ void read_GIF(FILE *file, GIF *gif)
                     /* expected a PlainText, got something else! */
                     else
                     {
-                        fprintf(
-                            stderr,
-                            (   "ERROR: (%ld) read_GIF -- expected extension"
-                                "block 0x01, got %#.2hhx\n"),
-                            ftell(file),
+                        fatal(
+                            "expected extension block 0x01, got %#.2hhx\n",
                             extension2.label);
-                        exit(EXIT_FAILURE);
                     }
                     break;
 
@@ -462,10 +451,8 @@ void read_GIF(FILE *file, GIF *gif)
                 break;
 
             default:
-                fprintf(
-                    stderr,
-                    "WARNING: (%ld) read_GIF -- unknown label '%#.2hhx'\n",
-                    ftell(file),
+                warn(
+                    "read_GIF -- unknown label '%#.2hhx'\n",
                     extension.label);
                 break;
             }
@@ -488,12 +475,7 @@ void read_GIF(FILE *file, GIF *gif)
             break;
 
         default:
-            fprintf(
-                stderr,
-                "ERROR: (%ld) read_GIF -- unknown introducer '%#.2hhx'\n",
-                ftell(file),
-                code);
-            exit(EXIT_FAILURE);
+            fatal("unknown introducer '%#.2hhx'\n", code);
             break;
         }
     }
@@ -507,7 +489,7 @@ GIF load_gif_from_file(char const *filename)
     FILE *file = fopen(filename, "rb");
     if (file == NULL)
     {
-        fprintf(stderr, "ERROR: fopen -- %s\n", strerror(errno));
+        perror("fopen");
         exit(EXIT_FAILURE);
     }
 

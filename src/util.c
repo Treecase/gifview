@@ -20,6 +20,7 @@
 #include "util.h"
 
 #include <errno.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -48,18 +49,24 @@ void linkedlist_append(LinkedList **head, LinkedList *end)
     curr->next = end;
 }
 
-int safe_fread(void *restrict ptr, size_t size, size_t n, FILE *restrict stream)
+size_t _efread(
+    char const *file, int line, char const *func, void *restrict ptr,
+    size_t size, size_t n, FILE *restrict stream)
 {
-    int e = 0;
     errno = 0;
     size_t value = fread(ptr, size, n, stream);
-    e = errno;
     if (value != n)
     {
-        perror("fread");
-        return e;
+        if (value == 0 && feof(stream))
+        {
+            _giflog(WARN, file, line, func, "Unexpected EOF.\n");
+        }
+        else
+        {
+            _giflog(FATAL, file, line, func, "%s\n", strerror(errno));
+        }
     }
-    return 0;
+    return value;
 }
 
 char *estrcat(char const *prefix, char const *suffix)
@@ -71,4 +78,40 @@ char *estrcat(char const *prefix, char const *suffix)
     memcpy(out + prefix_len, suffix, suffix_len);
     out[prefix_len + suffix_len] = '\0';
     return out;
+}
+
+void _giflog(
+    GIF_LoggingLevels level, char const *file, int line, char const *func,
+    char const *format, ...)
+{
+    FILE *stream = stdout;
+    char const *string = "LOG";
+    switch (level)
+    {
+    case LOG:
+        stream = stdout;
+        string = "LOG";
+        break;
+    case WARN:
+        stream = stdout;
+        string = "WARNING";
+        break;
+    case ERROR:
+        stream = stderr;
+        string = "ERROR";
+        break;
+    case FATAL:
+        stream = stderr;
+        string = "FATAL ERROR";
+        break;
+    }
+    va_list ap;
+    va_start(ap, format);
+    fprintf(stream, "%s: %s:%d:%s -- ", string, file, line, func);
+    vfprintf(stream, format, ap);
+    va_end(ap);
+    if (level == FATAL)
+    {
+        exit(EXIT_FAILURE);
+    }
 }

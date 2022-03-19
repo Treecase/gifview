@@ -19,6 +19,7 @@
 
 #include "keybinds.h"
 #include "config.h"
+#include "util.h"
 
 #include <stdbool.h>
 
@@ -203,7 +204,7 @@ void parse_keyconf(FILE *file)
         struct Action *action = NULL;
         if (parse_action(action_name, &action))
         {
-            fprintf(stderr, "ERROR:%zu,%zu -- Invalid action '%s'\n",
+            error("%zu,%zu -- Invalid action '%s'\n",
                 p.line_count, tok_start, action_name);
         }
         free(action_name);
@@ -225,11 +226,11 @@ void parse_keyconf(FILE *file)
         switch (err)
         {
         case 1:
-            fprintf(stderr, "ERROR:%zu,%zu -- Invalid modifier '%s'\n",
+            error("%zu,%zu -- Invalid modifier '%s'\n",
                 p.line_count, tok_start, key1);
             break;
         case 2:
-            fprintf(stderr, "ERROR:%zu,%zu -- Invalid keyname '%s' (%s)\n",
+            error("%zu,%zu -- Invalid keyname '%s' (%s)\n",
                 p.line_count, tok_start, key1, SDL_GetError());
             break;
         }
@@ -256,11 +257,11 @@ void parse_keyconf(FILE *file)
         switch (err)
         {
         case 1:
-            fprintf(stderr, "ERROR:%zu,%zu -- Invalid modifier '%s'\n",
+            error("%zu,%zu -- Invalid modifier '%s'\n",
                 p.line_count, tok_start, key2);
             break;
         case 2:
-            fprintf(stderr, "ERROR:%zu,%zu -- Invalid keyname '%s' (%s)\n",
+            error("%zu,%zu -- Invalid keyname '%s' (%s)\n",
                 p.line_count, tok_start, key2, SDL_GetError());
             break;
         }
@@ -287,11 +288,11 @@ void parse_keyconf(FILE *file)
         switch (err)
         {
         case 1:
-            fprintf(stderr, "ERROR:%zu,%zu -- Invalid modifier '%s'\n",
+            error("%zu,%zu -- Invalid modifier '%s'\n",
                 p.line_count, tok_start, key3);
             break;
         case 2:
-            fprintf(stderr, "ERROR:%zu,%zu -- Invalid keyname '%s' (%s)\n",
+            error("%zu,%zu -- Invalid keyname '%s' (%s)\n",
                 p.line_count, tok_start, key3, SDL_GetError());
             break;
         }
@@ -302,8 +303,7 @@ void parse_keyconf(FILE *file)
         skip_whitespace(&p);
         if (p.i < p.length)
         {
-            fprintf(stderr,
-                "ERROR:%zu,%zu -- Trailing non-whitespace characters",
+            error("%zu,%zu -- Trailing non-whitespace characters",
                     p.line_count, p.i);
         }
     }
@@ -362,9 +362,7 @@ void init_keybinds(void)
         struct Action *action = NULL;
         if (parse_action(def->name, &action))
         {
-            fprintf(stderr,
-                "ERROR: init_keybinds -- default_keybinds contains an invalid"
-                "action name '%s'\n",
+            error("default_keybinds contains an invalid action name '%s'\n",
                 def->name);
             continue;
         }
