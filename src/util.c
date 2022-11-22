@@ -49,9 +49,7 @@ void linkedlist_append(LinkedList **head, LinkedList *end)
     curr->next = end;
 }
 
-size_t _efread(
-    char const *file, int line, char const *func, void *restrict ptr,
-    size_t size, size_t n, FILE *restrict stream)
+size_t efread(void *restrict ptr, size_t size, size_t n, FILE *restrict stream)
 {
     errno = 0;
     size_t value = fread(ptr, size, n, stream);
@@ -59,11 +57,11 @@ size_t _efread(
     {
         if (value == 0 && feof(stream))
         {
-            _giflog(WARN, file, line, func, "Unexpected EOF.\n");
+            warn("Unexpected EOF.\n");
         }
-        else
+        else if (ferror(stream))
         {
-            _giflog(FATAL, file, line, func, "%s\n", strerror(errno));
+            fatal("%s\n", strerror(errno));
         }
     }
     return value;
@@ -78,40 +76,4 @@ char *estrcat(char const *prefix, char const *suffix)
     memcpy(out + prefix_len, suffix, suffix_len);
     out[prefix_len + suffix_len] = '\0';
     return out;
-}
-
-void _giflog(
-    GIF_LoggingLevels level, char const *file, int line, char const *func,
-    char const *format, ...)
-{
-    FILE *stream = stdout;
-    char const *string = "LOG";
-    switch (level)
-    {
-    case LOG:
-        stream = stdout;
-        string = "LOG";
-        break;
-    case WARN:
-        stream = stdout;
-        string = "WARNING";
-        break;
-    case ERROR:
-        stream = stderr;
-        string = "ERROR";
-        break;
-    case FATAL:
-        stream = stderr;
-        string = "FATAL ERROR";
-        break;
-    }
-    va_list ap;
-    va_start(ap, format);
-    fprintf(stream, "%s: %s:%d:%s -- ", string, file, line, func);
-    vfprintf(stream, format, ap);
-    va_end(ap);
-    if (level == FATAL)
-    {
-        exit(EXIT_FAILURE);
-    }
 }
