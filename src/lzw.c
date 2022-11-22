@@ -46,7 +46,7 @@ struct Buffer
 };
 
 
-/* Read N bits from STREAM. */
+/** Read N bits from STREAM. */
 unsigned int bitstream_read(size_t n, struct Bitstream *stream)
 {
     unsigned int out = 0;
@@ -65,7 +65,7 @@ unsigned int bitstream_read(size_t n, struct Bitstream *stream)
     return out;
 }
 
-/* Append SUFFIX to the end of PREFIX. */
+/** Append SUFFIX to the end of PREFIX. */
 struct String concat(struct String prefix, char suffix)
 {
     struct String new = {
@@ -77,7 +77,7 @@ struct String concat(struct String prefix, char suffix)
     return new;
 }
 
-/* Append DATA to BUFFER. */
+/** Append DATA to BUFFER. */
 void append(struct Buffer *buffer, struct String data)
 {
     /* Number of extra bytes to allocate when the buffer is resized. */
@@ -130,9 +130,7 @@ size_t unlzw(size_t min_code_size, uint8_t const *in, uint8_t **out)
     {
         symbol = bitstream_read(code_size, &input);
         if (symbol == eoi)
-        {
             goto LZW_done;
-        }
     } while (symbol == cc);
     struct String previous = table[symbol];
     append(&output, previous);
@@ -143,18 +141,14 @@ size_t unlzw(size_t min_code_size, uint8_t const *in, uint8_t **out)
         if (symbol == cc)
         {
             for (uint16_t i = cc + 2; i < next; ++i)
-            {
                 free(table[i].data);
-            }
             code_size = min_code_size + 1;
             next = cc + 2;
             do
             {
                 symbol = bitstream_read(code_size, &input);
                 if (symbol == eoi)
-                {
                     goto LZW_done;
-                }
             } while (symbol == cc);
             previous = table[symbol];
             append(&output, previous);
@@ -168,9 +162,7 @@ size_t unlzw(size_t min_code_size, uint8_t const *in, uint8_t **out)
             struct String const W = table[symbol];
             append(&output, W);
             if (next < table_size)
-            {
                 table[next++] = concat(previous, W.data[0]);
-            }
             previous = W;
         }
         else
@@ -178,27 +170,19 @@ size_t unlzw(size_t min_code_size, uint8_t const *in, uint8_t **out)
             struct String const V = concat(previous, previous.data[0]);
             append(&output, V);
             if (next < table_size)
-            {
                 table[next++] = V;
-            }
             previous = V;
         }
         /* Once the code table contains 2^code_size values, the code size must
          * be increased. */
         if (next == (1 << code_size) && next < table_size)
-        {
             code_size++;
-        }
     }
 
 LZW_done:
     for (size_t i = 0; i < next; ++i)
-    {
         if (i != cc && i != eoi)
-        {
             free(table[i].data);
-        }
-    }
     *out = realloc(output.data, output.size);
     return output.size;
 }

@@ -36,7 +36,7 @@
 #endif
 
 
-/* SDL data for a GIF graphic. */
+/** SDL data for a GIF graphic. */
 struct Graphic
 {
     SDL_Texture *texture;
@@ -44,14 +44,14 @@ struct Graphic
     size_t delay;
 };
 
-/* SurfaceGraphic */
+/** SurfaceGraphic. */
 struct SurfaceGraphic
 {
     SDL_Rect rect;
     SDL_Surface *surface;
 };
 
-/* SDL data for the app. */
+/** SDL data for the app. */
 struct SDLData
 {
     SDL_Window *window;
@@ -60,14 +60,14 @@ struct SDLData
     int width, height;
 };
 
-/* Image draw data. */
+/** Image draw data. */
 struct DrawingData
 {
     double zoom;
     int offset_x, offset_y;
 };
 
-/* Global app data. */
+/** Global app data. */
 struct GlobalData
 {
     bool running;
@@ -84,33 +84,33 @@ void shift_right(void);
 void shift_left(void);
 void quit(void);
 
-/* Size (in pixels) of background grid squares. */
+/** Size (in pixels) of background grid squares. */
 static int const BACKGROUND_GRID_SIZE = 8;
 
-/* Color for even-numbered background grid squares. */
+/** Color for even-numbered background grid squares. */
 static uint8_t const BACKGROUND_GRID_COLOR_A[3] = {0x64, 0x64, 0x64};
-/* Color for odd-numbered background grid squares. */
+/** Color for odd-numbered background grid squares. */
 static uint8_t const BACKGROUND_GRID_COLOR_B[3] = {0x90, 0x90, 0x90};
 
-/* Number of pixels to shift the image when shifting it using arrow keys. */
+/** Number of pixels to shift the image when shifting it using arrow keys. */
 static int const SHIFT_AMOUNT = 2.5 * BACKGROUND_GRID_SIZE;
 
-/* How much to zoom in/out when +/- are pressed. */
+/** How much to zoom in/out when +/- are pressed. */
 static int const ZOOM_CHANGE_MULTIPLIER = 2;
 
-/* dd holds stuff for how/where to draw the image. */
+/** Holds stuff for how/where to draw the image. */
 static struct DrawingData dd = {
     .offset_x = 0,
     .offset_y = 0,
     .zoom = 1.0
 };
 
-/* GD holds global running data. */
+/** Holds global running data. */
 static struct GlobalData GD = {
     .running = true
 };
 
-/* List of keybindable actions. */
+/** List of keybindable actions. */
 struct Action actions[] = {
     {"zoom_in",     zoom_in,     NULL, NULL, NULL},
     {"zoom_out",    zoom_out,    NULL, NULL, NULL},
@@ -122,18 +122,15 @@ struct Action actions[] = {
     {"quit",        quit,        NULL, NULL, NULL},
 };
 
-/* Length of actions array. */
+/** Length of actions array. */
 size_t actions_count = sizeof(actions) / sizeof(*actions);
 
 
-/* Generate a background grid texture. */
+/** Generate a background grid texture. */
 void generate_bg_grid(struct SDLData *G)
 {
     SDL_Surface *grid_surf = SDL_CreateRGBSurfaceWithFormat(
-        0,
-        G->width, G->height,
-        32,
-        SDL_PIXELFORMAT_RGBA32);
+        0, G->width, G->height, 32, SDL_PIXELFORMAT_RGBA32);
 
     Uint32 const grid_color_a = SDL_MapRGB(
         grid_surf->format,
@@ -156,7 +153,8 @@ void generate_bg_grid(struct SDLData *G)
                 .h = BACKGROUND_GRID_SIZE,
                 .w = BACKGROUND_GRID_SIZE,
                 .x = x,
-                .y = y * BACKGROUND_GRID_SIZE};
+                .y = y * BACKGROUND_GRID_SIZE
+            };
             SDL_FillRect(grid_surf, &rect, grid_color_b);
         }
     }
@@ -165,8 +163,10 @@ void generate_bg_grid(struct SDLData *G)
     SDL_FreeSurface(grid_surf);
 }
 
-/* 1/100 second timer callback.  Used to trigger frame changes in animated
- * GIFs. */
+/**
+ * 1/100 second timer callback.  Used to trigger frame changes in animated
+ * GIFs.
+ */
 Uint32 timer_callback(Uint32 interval, void *param)
 {
     SDL_Event event = {
@@ -175,12 +175,14 @@ Uint32 timer_callback(Uint32 interval, void *param)
             .code = 0,
             .data1 = NULL,
             .data2 = NULL,
-            .type = SDL_USEREVENT}};
+            .type = SDL_USEREVENT
+        }
+    };
     SDL_PushEvent(&event);
     return interval;
 }
 
-/* Create SDL data. */
+/** Create SDL data. */
 struct SDLData init_sdl(int window_width, int window_height)
 {
     struct SDLData data;
@@ -191,22 +193,19 @@ struct SDLData init_sdl(int window_width, int window_height)
         window_width, window_height,
         SDL_WINDOW_RESIZABLE);
     if (data.window == NULL)
-    {
         fatal("Failed to create window: %s\n", SDL_GetError());
-    }
 
     data.renderer = SDL_CreateRenderer(
         data.window, -1, SDL_RENDERER_ACCELERATED);
     if (data.renderer == NULL)
-    {
         fatal("Failed to create renderer -- %s\n", SDL_GetError());
-    }
+
     SDL_GetWindowSize(data.window, &data.width, &data.height);
     generate_bg_grid(&data);
     return data;
 }
 
-/* Free SDL data. */
+/** Free SDL data. */
 void free_sdl(struct SDLData const *data)
 {
     SDL_DestroyTexture(data->bg_texture);
@@ -214,13 +213,12 @@ void free_sdl(struct SDLData const *data)
     SDL_DestroyWindow(data->window);
 }
 
-/* Create a SurfaceGraphic from a GIF_Graphic. */
+/** Create a SurfaceGraphic from a GIF_Graphic. */
 struct SurfaceGraphic *mk_SDLSurface_from_GIFImage(struct GIF_Graphic graphic)
 {
     if (!graphic.is_img)
-    {
         return NULL;
-    }
+
     struct GIF_Image image = graphic.img;
     struct SurfaceGraphic *out = malloc(sizeof(*out));
     out->rect.x = image.left;
@@ -277,14 +275,11 @@ struct SurfaceGraphic *mk_SDLSurface_from_GIFImage(struct GIF_Graphic graphic)
     return out;
 }
 
-/* Generate a linked list of Graphics from a linked list of GIF_Graphics. */
+/** Generate a linked list of Graphics from a linked list of GIF_Graphics. */
 LinkedList *make_graphics(struct SDLData G, GIF gif)
 {
     SDL_Surface *frame = SDL_CreateRGBSurfaceWithFormat(
-        0,
-        gif.width, gif.height,
-        32,
-        SDL_PIXELFORMAT_RGBA32);
+        0, gif.width, gif.height, 32, SDL_PIXELFORMAT_RGBA32);
     SDL_FillRect(frame, NULL, SDL_MapRGBA(frame->format, 0, 0, 0, 0xff));
 
     LinkedList *images = NULL;
@@ -307,10 +302,7 @@ LinkedList *make_graphics(struct SDLData G, GIF gif)
                 if (node->next != NULL)
                 {
                     SDL_Surface *newframe = SDL_CreateRGBSurfaceWithFormat(
-                        0,
-                        gif.width, gif.height,
-                        32,
-                        SDL_PIXELFORMAT_RGBA32);
+                        0, gif.width, gif.height, 32, SDL_PIXELFORMAT_RGBA32);
                     SDL_BlitSurface(frame, NULL, newframe, NULL);
                     SDL_FreeSurface(frame);
                     frame = newframe;
@@ -325,7 +317,7 @@ LinkedList *make_graphics(struct SDLData G, GIF gif)
         }
         else
         {
-            /* TODO: PlainText rendering */
+            /* TODO: PlainText rendering. */
         }
     }
     if (frame != NULL)
@@ -348,7 +340,7 @@ LinkedList *make_graphics(struct SDLData G, GIF gif)
     return images;
 }
 
-/* Free a linked list of Graphics. */
+/** Free a linked list of Graphics. */
 void free_graphics(LinkedList *graphics)
 {
     for (LinkedList *node = graphics->next; node != NULL;)
@@ -359,35 +351,34 @@ void free_graphics(LinkedList *graphics)
         free(graphic);
         free(node);
         if (node == graphics)
-        {
             break;
-        }
         node = next;
     }
 }
 
-/* Clear the screen. */
+/** Clear the screen. */
 void clear_screen(struct SDLData G)
 {
     SDL_RenderCopy(G.renderer, G.bg_texture, NULL, NULL);
 }
 
-/* Draw IMG to the screen. */
+/** Draw IMG to the screen. */
 void draw_img(struct SDLData G, struct Graphic const *img)
 {
-    int imgw = img->width  * dd.zoom,
+    int imgw = img->width * dd.zoom,
         imgh = img->height * dd.zoom;
 
     SDL_Rect position = {
         .h = imgh,
         .w = imgw,
         .x = dd.offset_x,
-        .y = dd.offset_y};
+        .y = dd.offset_y
+    };
 
     SDL_RenderCopy(G.renderer, img->texture, NULL, &position);
 }
 
-/* Ensure DD's offset_* fields don't put the image off the screen. */
+/** Ensure DD's offset_* fields don't put the image off the screen. */
 void bounds_check_offsets(struct SDLData G, int img_w, int img_h)
 {
     int const scaled_img_w = img_w * dd.zoom,
@@ -422,66 +413,62 @@ void bounds_check_offsets(struct SDLData G, int img_w, int img_h)
     }
 }
 
-/* Increase zoom level. */
+/** Increase zoom level. */
 void zoom_in(void)
 {
     dd.zoom *= ZOOM_CHANGE_MULTIPLIER;
 }
 
-/* Decrease zoom level. */
+/** Decrease zoom level. */
 void zoom_out(void)
 {
     dd.zoom /= ZOOM_CHANGE_MULTIPLIER;
 }
 
-/* Reset zoom level. */
+/** Reset zoom level. */
 void reset_zoom(void)
 {
     dd.zoom = 1.0;
 }
 
-/* Shift camera up. */
+/** Shift camera up. */
 void shift_up(void)
 {
     dd.offset_y -= SHIFT_AMOUNT;
 }
 
-/* Shift camera down. */
+/** Shift camera down. */
 void shift_down(void)
 {
     dd.offset_y += SHIFT_AMOUNT;
 }
 
-/* Shift camera right. */
+/** Shift camera right. */
 void shift_right(void)
 {
     dd.offset_x -= SHIFT_AMOUNT;
 }
 
-/* Shift camera left. */
+/** Shift camera left. */
 void shift_left(void)
 {
     dd.offset_x += SHIFT_AMOUNT;
 }
 
-/* Quit the app. */
+/** Quit the app. */
 void quit(void)
 {
     GD.running = false;
 }
 
-/* Return true if BIND matches EVENT. */
+/** Return true if BIND matches EVENT. */
 bool keybind_ispressed(struct KeyBind const *bind, SDL_Keysym event)
 {
     if (bind == NULL || bind->code != event.sym)
-    {
         return false;
-    }
 
     if (bind->modmask == KMOD_NONE)
-    {
         return event.mod == KMOD_NONE;
-    }
 
     SDL_Keymod const othermask = KMOD_NUM | KMOD_CAPS | KMOD_MODE | KMOD_SCROLL;
 
@@ -504,26 +491,18 @@ bool keybind_ispressed(struct KeyBind const *bind, SDL_Keysym event)
      * Right Thing, we check here if the event spec says either side is fine,
      * and check only that *one of* the sides is pressed. */
     if ((bind->modmask & KMOD_SHIFT) == KMOD_SHIFT)
-    {
         shift = event.mod & KMOD_SHIFT;
-    }
     if ((bind->modmask & KMOD_CTRL) == KMOD_CTRL)
-    {
         ctrl = event.mod & KMOD_CTRL;
-    }
     if ((bind->modmask & KMOD_ALT) == KMOD_ALT)
-    {
         alt = event.mod & KMOD_ALT;
-    }
     if ((bind->modmask & KMOD_GUI) == KMOD_GUI)
-    {
         meta = event.mod & KMOD_GUI;
-    }
 
     return shift && ctrl && alt && meta && other;
 }
 
-/* Return true if any of ACTION's KeyBinds matches EVENT. */
+/** Return true if any of ACTION's KeyBinds matches EVENT. */
 bool action_ispressed(struct Action action, SDL_Keysym event)
 {
     return (
@@ -539,9 +518,8 @@ int MAIN(int argc, char *argv[])
     GIF gif = load_gif_from_file(filename);
 
     for (LinkedList *node = gif.comments; node != NULL; node = node->next)
-    {
         printf("Comment: '%s'\n", (char const *)node->data);
-    }
+
     for (LinkedList *node = gif.app_extensions; node != NULL; node = node->next)
     {
         struct GIF_ApplicationExt const *ext = node->data;
@@ -620,12 +598,8 @@ int MAIN(int argc, char *argv[])
 
         case SDL_KEYDOWN:
             for (size_t i = 0; i < actions_count; ++i)
-            {
                 if (action_ispressed(actions[i], event.key.keysym))
-                {
                     actions[i].action();
-                }
-            }
             screen_dirty = true;
             break;
 

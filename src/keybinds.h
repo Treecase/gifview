@@ -24,14 +24,15 @@
 
 #include <SDL2/SDL_keyboard.h>
 
-/* Keybind data. */
+
+/** Keybind data. */
 struct KeyBind
 {
     SDL_Keycode code;
     SDL_Keymod modmask;
 };
 
-/* Key actions. */
+/** Key actions. */
 struct Action
 {
     char const *name;
@@ -41,12 +42,14 @@ struct Action
     struct KeyBind *tertiary;
 };
 
-/* Set ACTION's keybinds. */
+
+/** Set ACTION's keybinds. */
 void set_keybind(
     struct Action *action, struct KeyBind primary, struct KeyBind secondary,
     struct KeyBind tertiary);
 
-/* Reset default keybinds, read keyconf files. */
+/** Reset default keybinds, read keyconf files. */
 void init_keybinds(void);
 
-#endif  // _GIFVIEW_KEYBINDS_H
+
+#endif /* _GIFVIEW_KEYBINDS_H */

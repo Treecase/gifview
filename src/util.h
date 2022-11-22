@@ -17,8 +17,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef GIFVIEW_UTIL_H
-#define GIFVIEW_UTIL_H
+#ifndef _GIFVIEW_UTIL_H
+#define _GIFVIEW_UTIL_H
 
 #include <stdio.h>
 
@@ -26,15 +26,17 @@
 
 
 #define warn(fmt, ...)  \
-    SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, (fmt), ##__VA_ARGS__)
+    (SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, (fmt), ##__VA_ARGS__))
+
 #define error(fmt, ...) \
-    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, (fmt), ##__VA_ARGS__)
+    (SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, (fmt), ##__VA_ARGS__))
+
 #define fatal(fmt, ...) ({\
     SDL_LogCritical(SDL_LOG_CATEGORY_APPLICATION, (fmt), ##__VA_ARGS__);\
     exit(EXIT_FAILURE);})
 
 
-/* Linked List node. */
+/** Linked List node. */
 typedef struct LinkedList
 {
     void *data;
@@ -42,18 +44,22 @@ typedef struct LinkedList
 } LinkedList;
 
 
-/* Allocate a new LinkedList node containing DATA. */
+/** Allocate a new LinkedList node containing DATA. */
 LinkedList *linkedlist_new(void *data);
 
-/* Append END to the linked list pointed to by HEAD. */
+/** Append END to the linked list pointed to by HEAD. */
 void linkedlist_append(LinkedList **head, LinkedList *end);
 
-/* Error-checked fread.  If an error occurs, prints the error message and dies.
- * If EOF is hit, prints a warning. */
+/**
+ * Error-checked fread.  If an error occurs, prints the error message and dies.
+ * If EOF is hit, prints a warning.
+ */
 size_t efread(void *restrict ptr, size_t size, size_t n, FILE *restrict stream);
 
-/* Concatenate two strings, returning the result in a newly-allocated string. */
+/**
+ * Concatenate two strings, returning the result in a newly-allocated string.
+ */
 char *estrcat(char const *prefix, char const *suffix);
 
 
-#endif  // GIFVIEW_UTIL_H
+#endif /* _GIFVIEW_UTIL_H */

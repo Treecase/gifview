@@ -22,13 +22,15 @@
 
 #include <stdbool.h>
 
-/* Print GIFView help information. */
+
+/** Print GIFView help information. */
 void usage(char const *name, bool print_long);
 
-/* Print GIFView version information. */
+/** Print GIFView version information. */
 void version(void);
 
-/* Parse argv. */
+/** Parse command-line arguments. */
 char const *parse_args(int argc, char *argv[]);
 
-#endif // _GIFVIEW_ARGS_H
+
+#endif /* _GIFVIEW_ARGS_H */

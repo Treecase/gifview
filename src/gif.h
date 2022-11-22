@@ -17,8 +17,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef GIFVIEW_GIF_H
-#define GIFVIEW_GIF_H
+#ifndef _GIFVIEW_GIF_H
+#define _GIFVIEW_GIF_H
 
 #include "util.h"
 
@@ -27,7 +27,7 @@
 #include <stdint.h>
 
 
-/* GIF Versions */
+/** GIF Versions. */
 enum GIF_Version
 {
     GIF_Version_Unknown,
@@ -35,7 +35,7 @@ enum GIF_Version
     GIF_Version_89a,
 };
 
-/* GIF Color Table */
+/** GIF Color Table */
 struct GIF_ColorTable
 {
     bool sorted;
@@ -43,7 +43,7 @@ struct GIF_ColorTable
     uint8_t *colors;
 };
 
-/* Image Descriptor */
+/** Image Descriptor. */
 struct GIF_Image
 {
     uint16_t left, right, width, height;
@@ -55,7 +55,7 @@ struct GIF_Image
     uint8_t *pixels;
 };
 
-/* Graphic extension */
+/** Graphic extension. */
 struct GIF_GraphicExt
 {
     enum DisposalMethod
@@ -72,7 +72,7 @@ struct GIF_GraphicExt
     uint8_t transparent_color_idx;
 };
 
-/* Plain Text extension */
+/** Plain Text extension. */
 struct GIF_PlainTextExt
 {
     uint16_t tg_left, tg_top, tg_width, tg_height;
@@ -82,7 +82,7 @@ struct GIF_PlainTextExt
     uint8_t *data;
 };
 
-/* Application extension */
+/** Application extension. */
 struct GIF_ApplicationExt
 {
     char appid[8];
@@ -91,7 +91,7 @@ struct GIF_ApplicationExt
     uint8_t *data;
 };
 
-/* Graphic Block */
+/** Graphic Block. */
 struct GIF_Graphic
 {
     struct GIF_GraphicExt *extension;
@@ -103,7 +103,7 @@ struct GIF_Graphic
     };
 };
 
-/* Container for GIF data. */
+/** Container for GIF data. */
 typedef struct GIF
 {
     enum GIF_Version version;
@@ -121,10 +121,12 @@ typedef struct GIF
     LinkedList *app_extensions;
 } GIF;
 
+
 /* Load a GIF from a file. */
 GIF load_gif_from_file(char const *filename);
 
 /* Deallocate GIF data. */
 void free_gif(GIF gif);
 
-#endif  // GIFVIEW_GIF_H
+
+#endif /* _GIFVIEW_GIF_H */

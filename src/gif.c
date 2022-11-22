@@ -30,7 +30,7 @@
 #include <string.h>
 
 
-/* Generic GIF Extension data. */
+/** Generic GIF Extension data. */
 struct GenericExtension
 {
     uint8_t label;
@@ -38,7 +38,7 @@ struct GenericExtension
     uint8_t *data;
 };
 
-/* GIF Block Identifiers. */
+/** GIF Block Identifiers. */
 enum GIF_BlockIdentifiers
 {
     GIF_Block_Extension = 0x21,
@@ -46,7 +46,7 @@ enum GIF_BlockIdentifiers
     GIF_Block_Trailer = 0x3B,
 };
 
-/* GIF Extension Block labels. */
+/** GIF Extension Block labels. */
 enum GIF_ExtensionLabels
 {
     GIF_Ext_PlainText = 0x01,
@@ -56,7 +56,8 @@ enum GIF_ExtensionLabels
 };
 
 
-/* Read data sub-blocks from FILE, store these in DATA, and stop when a block
+/**
+ * Read data sub-blocks from FILE, store these in DATA, and stop when a block
  * terminator is reached.  DATA_SIZE will be filled with the number of bytes
  * read.  Memory pointed to by data must be freed.
  */
@@ -68,16 +69,14 @@ void read_data_sub_blocks(FILE *file, size_t *data_size, uint8_t **data)
     {
         uint8_t block_size = 0;
 
-        /* get the number of bytes in the next block */
+        /* Get the number of bytes in the next block. */
         efread(&block_size, 1, 1, file);
 
-        /* a block_size of 0 means we're done */
+        /* A block_size of 0 means we're done. */
         if (block_size == 0)
-        {
             return;
-        }
 
-        /* resize the data buffer to fit the block */
+        /* Resize the data buffer to fit the block. */
         errno = 0;
         *data = realloc(*data, (*data_size) + block_size);
         if (*data == NULL)
@@ -86,28 +85,28 @@ void read_data_sub_blocks(FILE *file, size_t *data_size, uint8_t **data)
             exit(EXIT_FAILURE);
         }
 
-        /* read the data block */
+        /* Read the data block. */
         efread(*data + *data_size, 1, block_size, file);
         *data_size += block_size;
     }
 }
 
-/* Read a Header block from FILE, and placing the parsed version number into
- * VERSION. */
+/**
+ * Read a Header block from FILE, and placing the parsed version number into
+ * VERSION.
+ */
 void read_header(FILE *file, enum GIF_Version *version)
 {
     char header[6];
 
-    /* read header */
+    /* Read header. */
     efread(header, 1, 6, file);
 
-    /* check signature */
+    /* Check signature. */
     if (strncmp(header, "GIF", 3) != 0)
-    {
         fatal("bad signature '%.3s'\n", header);
-    }
 
-    /* check version */
+    /* Check version. */
     if (strncmp(header + 3, "87a", 3) == 0)
     {
         *version = GIF_Version_87a;
@@ -123,12 +122,13 @@ void read_header(FILE *file, enum GIF_Version *version)
     }
 }
 
-/* Read SIZE*3 bytes of Color Table data from FILE, storing it in TABLE.
+/**
+ * Read SIZE*3 bytes of Color Table data from FILE, storing it in TABLE.
  * Memory pointed to by TABLE must be freed.
  */
 void read_color_table(FILE *file, size_t size, uint8_t **table)
 {
-    /* allocate the table buffer */
+    /* Allocate the table buffer. */
     errno = 0;
     *table = malloc(3 * size);
     if (*table == NULL)
@@ -136,30 +136,30 @@ void read_color_table(FILE *file, size_t size, uint8_t **table)
         perror("malloc");
         exit(EXIT_FAILURE);
     }
-    /* read the table data */
+    /* Read the table data. */
     efread(*table, 3, size, file);
 }
 
-/* Read a Logical Screen Descriptor from FILE, storing the data in GIF. */
+/** Read a Logical Screen Descriptor from FILE, storing the data in GIF. */
 void read_logical_screen_descriptor(FILE *file, struct GIF *gif)
 {
     uint8_t fields;
 
-    /* read all the LSD data */
+    /* Read all the LSD data. */
     efread(&gif->width, 2, 1, file);
     efread(&gif->height, 2, 1, file);
     efread(&fields, 1, 1, file);
     efread(&gif->bg_color_index, 1, 1, file);
     efread(&gif->pixel_aspect_ratio, 1, 1, file);
 
-    /* grab all the packed fields */
+    /* Grab all the packed fields. */
     uint8_t gct_exponent = fields & 7;
     bool sort_flag = (fields >> 3) & 1;
     gif->color_resolution = (fields >> 4) & 7;
     bool gct_flag = (fields >> 7) & 1;
     size_t gct_size = 1 << (gct_exponent + 1);
 
-    /* get the Global Color Table, if it exists */
+    /* Get the Global Color Table, if it exists. */
     if (gct_flag)
     {
         gif->global_color_table = malloc(sizeof(*gif->global_color_table));
@@ -173,7 +173,7 @@ void read_logical_screen_descriptor(FILE *file, struct GIF *gif)
     }
 }
 
-/* Deinterlace interlaced GIF image data. */
+/** Deinterlace interlaced GIF image data. */
 void deinterlace(struct GIF_Image *image)
 {
     uint8_t *interlaced = image->pixels;
@@ -214,7 +214,7 @@ void deinterlace(struct GIF_Image *image)
     image->pixels = deinterlaced;
 }
 
-/* Fill IMAGE with Image Descriptor data read from FILE. */
+/** Fill IMAGE with Image Descriptor data read from FILE. */
 void read_image_descriptor(FILE *file, struct GIF_Image *image)
 {
     uint8_t fields;
@@ -231,7 +231,7 @@ void read_image_descriptor(FILE *file, struct GIF_Image *image)
     bool lct_flag = (fields >> 7) & 1;
     size_t lct_size = 1 << (lct_exponent + 1);
 
-    /* get the Local Color Table */
+    /* Get the Local Color Table. */
     if (lct_flag)
     {
         image->color_table = malloc(sizeof(*image->color_table));
@@ -252,13 +252,11 @@ void read_image_descriptor(FILE *file, struct GIF_Image *image)
     read_data_sub_blocks(file, &compressed_size, &compressed);
     image->size = unlzw(min_code_size, compressed, &image->pixels);
     if (image->interlace_flag)
-    {
         deinterlace(image);
-    }
     free(compressed);
 }
 
-/* Fill EXTENSION with generic GIF extension data read from FILE. */
+/** Fill EXTENSION with generic GIF extension data read from FILE. */
 void read_extension(FILE *file, struct GenericExtension *extension)
 {
     efread(&extension->label, 1, 1, file);
@@ -266,8 +264,10 @@ void read_extension(FILE *file, struct GenericExtension *extension)
 }
 
 
-/* Convert generic extension data from EXT into a GraphicControl extension in
- * OUT. */
+/**
+ * Convert generic extension data from EXT into a GraphicControl extension in
+ * OUT.
+ */
 void parse_graphic_ext(struct GenericExtension ext, struct GIF_GraphicExt *out)
 {
     uint8_t fields = 0;
@@ -298,7 +298,9 @@ void parse_graphic_ext(struct GenericExtension ext, struct GIF_GraphicExt *out)
     }
 }
 
-/* Convert generic extension data from EXT into a PlainText extension in OUT. */
+/**
+ * Convert generic extension data from EXT into a PlainText extension in OUT.
+ */
 void parse_plaintext_ext(
     struct GenericExtension ext, struct GIF_PlainTextExt *out)
 {
@@ -315,8 +317,10 @@ void parse_plaintext_ext(
     memcpy(out->data, ext.data + 12, out->data_size);
 }
 
-/* Convert generic extension data from EXT into a Application extension in
- * OUT. */
+/**
+ * Convert generic extension data from EXT into a Application extension in
+ * OUT.
+ */
 void parse_application_ext(
     struct GenericExtension ext, struct GIF_ApplicationExt *out)
 {
@@ -328,8 +332,10 @@ void parse_application_ext(
 }
 
 
-/* Allocate a new GIF_Graphic object containing a Graphic extension and
- * PlainText extension */
+/**
+ * Allocate a new GIF_Graphic object containing a Graphic extension and
+ * PlainText extension.
+ */
 struct GIF_Graphic *mk_ext_plaintext(
     struct GenericExtension gce, struct GenericExtension pte)
 {
@@ -341,7 +347,7 @@ struct GIF_Graphic *mk_ext_plaintext(
     return graphic;
 }
 
-/* Allocate a new GIF_Graphic object containing a PlainText extension */
+/** Allocate a new GIF_Graphic object containing a PlainText extension. */
 struct GIF_Graphic *mk_noext_plaintext(struct GenericExtension ext)
 {
     struct GIF_Graphic *graphic = calloc(1, sizeof(struct GIF_Graphic));
@@ -351,7 +357,9 @@ struct GIF_Graphic *mk_noext_plaintext(struct GenericExtension ext)
     return graphic;
 }
 
-/* Allocate a new GIF_Graphic object containing a Graphic extension and Image */
+/**
+ * Allocate a new GIF_Graphic object containing a Graphic extension and Image.
+ */
 struct GIF_Graphic *mk_ext_image(struct GenericExtension gce)
 {
     struct GIF_Graphic *graphic = calloc(1, sizeof(struct GIF_Graphic));
@@ -361,7 +369,7 @@ struct GIF_Graphic *mk_ext_image(struct GenericExtension gce)
     return graphic;
 }
 
-/* Allocate a new GIF_Graphic object containing an Image */
+/** Allocate a new GIF_Graphic object containing an Image. */
 struct GIF_Graphic *mk_noext_image(void)
 {
     struct GIF_Graphic *graphic = calloc(1, sizeof(struct GIF_Graphic));
@@ -371,44 +379,44 @@ struct GIF_Graphic *mk_noext_image(void)
 }
 
 
-/* Parse a GIF datastream from FILE, storing the data in GIF. */
+/** Parse a GIF datastream from FILE, storing the data in GIF. */
 void read_GIF(FILE *file, GIF *gif)
 {
     read_header(file, &gif->version);
     read_logical_screen_descriptor(file, gif);
 
-    /* read data blocks until we hit a GIF Trailer */
+    /* Read data blocks until we hit a GIF Trailer. */
     for (bool done = false; !done;)
     {
-        /* get the block identifier for the next block */
+        /* Get the block identifier for the next block. */
         uint8_t code = 0;
         efread(&code, 1, 1, file);
         switch (code)
         {
         case GIF_Block_Extension:
-            /* get the extension label for the block */
+            /* Get the extension label for the block. */
             struct GenericExtension extension;
             read_extension(file, &extension);
             switch (extension.label)
             {
-            /* extensionless PlainText */
+            /* Extensionless PlainText. */
             case GIF_Ext_PlainText:
                 linkedlist_append(
                     &gif->graphics,
                     linkedlist_new(mk_noext_plaintext(extension)));
                 break;
 
-            /* Graphic Block with extension */
+            /* Graphic Block with extension. */
             case GIF_Ext_GraphicControl:
                 uint8_t code = 0;
                 efread(&code, 1, 1, file);
                 switch (code)
                 {
-                /* expecting a PlainText... */
+                /* Expecting a PlainText... */
                 case GIF_Block_Extension:
                     struct GenericExtension extension2;
                     read_extension(file, &extension2);
-                    /* PlainText with extension */
+                    /* PlainText with extension. */
                     if (extension2.label == GIF_Ext_PlainText)
                     {
                         linkedlist_append(
@@ -416,11 +424,10 @@ void read_GIF(FILE *file, GIF *gif)
                             linkedlist_new(
                                 mk_ext_plaintext(extension, extension2)));
                     }
-                    /* expected a PlainText, got something else! */
+                    /* Expected a PlainText, got something else! */
                     else
                     {
-                        fatal(
-                            "expected extension block 0x01, got %#.2hhx\n",
+                        fatal("expected extension block 0x01, got %#.2hhx\n",
                             extension2.label);
                     }
                     break;
@@ -430,9 +437,7 @@ void read_GIF(FILE *file, GIF *gif)
                     struct GIF_Graphic *graphic = mk_ext_image(extension);
                     read_image_descriptor(file, &graphic->img);
                     if (graphic->img.color_table == NULL)
-                    {
                         graphic->img.color_table = gif->global_color_table;
-                    }
                     linkedlist_append(&gif->graphics, linkedlist_new(graphic));
                     break;
                 }
@@ -451,22 +456,19 @@ void read_GIF(FILE *file, GIF *gif)
                 break;
 
             default:
-                warn(
-                    "read_GIF -- unknown label '%#.2hhx'\n",
+                warn("read_GIF -- unknown label '%#.2hhx'\n",
                     extension.label);
                 break;
             }
             free(extension.data);
             break;
 
-        /* extensionless Image */
+        /* Extensionless Image. */
         case GIF_Block_Image:
             struct GIF_Graphic *graphic = mk_noext_image();
             read_image_descriptor(file, &graphic->img);
             if (graphic->img.color_table == NULL)
-            {
                 graphic->img.color_table = gif->global_color_table;
-            }
             linkedlist_append(&gif->graphics, linkedlist_new(graphic));
             break;
 
@@ -482,7 +484,6 @@ void read_GIF(FILE *file, GIF *gif)
 }
 
 
-/* Load a GIF from a file. */
 GIF load_gif_from_file(char const *filename)
 {
     errno = 0;
@@ -520,9 +521,7 @@ void free_gif(GIF gif)
         if (g->is_img)
         {
             if (g->extension)
-            {
                 free(g->extension);
-            }
             free(g->img.pixels);
             if (g->img.color_table != NULL
                 && g->img.color_table != gif.global_color_table)

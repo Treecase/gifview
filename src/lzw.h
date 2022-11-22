@@ -17,14 +17,18 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef GIFVIEW_LZW_H
-#define GIFVIEW_LZW_H
+#ifndef _GIFVIEW_LZW_H
+#define _GIFVIEW_LZW_H
 
 #include <stdint.h>
 #include <stddef.h>
 
-/* Decompress LZW-compressed data from IN into OUT.  Returns the number of
- * bytes stored in OUT. */
+
+/**
+ * Decompress LZW-compressed data from IN into OUT.  Returns the number of
+ * bytes stored in OUT.
+ */
 size_t unlzw(size_t min_code_size, uint8_t const *in, uint8_t **out);
 
-#endif  // GIFVIEW_LZW_H
+
+#endif /* _GIFVIEW_LZW_H */

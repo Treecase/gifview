@@ -1,5 +1,5 @@
 /*
- * config.h.in -- GIFView configuration info.
+ * config.h-- GIFView configuration info.
  *
  * Copyright (C) 2022 Trevor Last
  *
@@ -30,4 +30,4 @@
 #define GIFVIEW_LOCAL_CONFIG_DIR "/.config/gifview"
 
 
-#endif // _GIFVIEW_CONFIG_H
+#endif /* _GIFVIEW_CONFIG_H */

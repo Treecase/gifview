@@ -23,28 +23,31 @@
 
 #include <stdbool.h>
 
+
 extern struct Action actions[];
 extern size_t actions_count;
 
-/* Macro for unbound keybinds. */
+
+/** Macro for unbound keybinds. */
 #define UNBOUND ((struct KeyBind){.code=SDLK_UNKNOWN})
 
-/* Path to the global key config file. */
+
+/** Path to the global key config file. */
 static char const *const GLOBAL_KEYCONF_PATH =\
     GIFVIEW_GLOBAL_CONFIG_DIR "/keys.conf";
 
-/* Path to the local key config file (starting from $HOME). */
+/** Path to the local key config file (starting from $HOME). */
 static char const *const LOCAL_KEYCONF_PATH =\
     GIFVIEW_LOCAL_CONFIG_DIR "/keys.conf";
 
-/* Helper struct used only for default_keybinds array. */
+/** Helper struct used only for default_keybinds array. */
 struct KeyDef
 {
     char const *const name;
-    struct KeyBind a,b,c;
+    struct KeyBind a, b, c;
 };
 
-/* Default keybinds. */
+/** Default keybinds. */
 static struct KeyDef const default_keybinds[] = {
     {"zoom_in",     {SDLK_UP,         0}, {SDLK_KP_PLUS, 0},         UNBOUND},
     {"zoom_out",    {SDLK_DOWN,       0}, {SDLK_KP_MINUS,0},         UNBOUND},
@@ -56,14 +59,16 @@ static struct KeyDef const default_keybinds[] = {
     {"quit",        {SDLK_ESCAPE,     0}, {SDLK_q,       0},         UNBOUND},
 };
 
-/* Number of items in the default_keybinds array. */
+/** Number of items in the default_keybinds array. */
 static size_t const default_keybinds_count = (
     sizeof(default_keybinds) / sizeof(*default_keybinds));
 
 
-/* Parse an action string.  On success, PTR will be set to point to the
+/**
+ * Parse an action string.  On success, PTR will be set to point to the
  * corresponding struct stored in the global `actions` array.  Returns 0 on
- * success, or 1 if there was an error. */
+ * success, or 1 if there was an error.
+ */
 int parse_action(char const *action, struct Action **ptr)
 {
     for (size_t i = 0; i < actions_count; ++i)
@@ -77,10 +82,12 @@ int parse_action(char const *action, struct Action **ptr)
     return 1;
 }
 
-/* Parse a keybind string.  On success, PTR will be set to the parsed keybind.
+/**
+ * Parse a keybind string.  On success, PTR will be set to the parsed keybind.
  * Returns 0 on success, 1 if the modifier is invalid, or 2 if the key name is
  * invalid.  If the key name is invalid, call SDL_GetError() for more
- * information. */
+ * information.
+ */
 int parse_keybind(char const *keyname, struct KeyBind *bind)
 {
     /* Parse modifier(s). */
@@ -110,15 +117,13 @@ int parse_keybind(char const *keyname, struct KeyBind *bind)
     /* Get the key code. */
     SDL_Keycode code = SDL_GetKeyFromName(keyname);
     if (code == SDLK_UNKNOWN)
-    {
         return 2;
-    }
     bind->code = code;
     bind->modmask = modmask;
     return 0;
 }
 
-/* keys.conf parser data. */
+/** keys.conf parser data. */
 struct Parser
 {
     size_t line_count;
@@ -127,18 +132,21 @@ struct Parser
     ssize_t length;
 };
 
-/* Consume characters from P until a non-whitespace character is found.
- * P will be left pointing to said character. */
+/**
+ * Consume characters from P until a non-whitespace character is found.
+ * P will be left pointing to said character.
+ */
 void skip_whitespace(struct Parser *p)
 {
     for (; p->i < p->length && isspace(p->line[p->i]); p->i++)
-    {
-    }
+        ;
 }
 
-/* Consume characters from P until a whitespace character is found, or if P
+/**
+ * Consume characters from P until a whitespace character is found, or if P
  * points to a " character, until another " is found. P will be left pointing
- * to the whitespace character, or the next character after the ". */
+ * to the whitespace character, or the next character after the ".
+ */
 int read_key(struct Parser *p, char **key)
 {
     int err = 0;
@@ -147,8 +155,7 @@ int read_key(struct Parser *p, char **key)
     {
         tok_start = ++p->i;
         while (p->i < p->length && p->line[p->i++] != '"')
-        {
-        }
+            ;
         while (!isspace(p->line[p->i]))
         {
             p->i++;
@@ -158,14 +165,16 @@ int read_key(struct Parser *p, char **key)
     else
     {
         while (p->i < p->length && !isspace(p->line[p->i++]))
-        {
-        }
+            ;
     }
     *key = strndup(p->line+tok_start, p->i-tok_start-1);
     return err;
 }
 
-/* Parse a keyconf file, updating the keybinds in the global `actions` array. */
+/**
+ * Parse a keyconf formatted FILE, updating the keybinds in the global
+ * ACTIONS array.
+ */
 void parse_keyconf(FILE *file)
 {
     struct Parser p = {
@@ -183,23 +192,19 @@ void parse_keyconf(FILE *file)
 
         /* Skip leading whitespace. */
         skip_whitespace(&p);
+
+        /* Blank line. */
         if (p.i >= p.length)
-        {
-            /* Blank line. */
             continue;
-        }
 
         /* Skip comment lines. */
         if (p.line[p.i] == '#')
-        {
             continue;
-        }
 
         /* Read the action. */
         ssize_t tok_start = p.i;
         while (p.i < p.length && !isspace(p.line[p.i++]))
-        {
-        }
+            ;
         char *action_name = strndup(p.line+tok_start, p.i-tok_start-1);
         struct Action *action = NULL;
         if (parse_action(action_name, &action))
@@ -211,9 +216,10 @@ void parse_keyconf(FILE *file)
 
         /* Inter-token whitespace. */
         skip_whitespace(&p);
+
+        /* No keys, so the action is unbound. */
         if (p.i >= p.length)
         {
-            /* No keys, so the action is unbound. */
             set_keybind(action, UNBOUND, UNBOUND, UNBOUND);
             continue;
         }
@@ -304,7 +310,7 @@ void parse_keyconf(FILE *file)
         if (p.i < p.length)
         {
             error("%zu,%zu -- Trailing non-whitespace characters",
-                    p.line_count, p.i);
+                p.line_count, p.i);
         }
     }
     free(p.line);
@@ -316,9 +322,8 @@ void set_keybind(
     struct KeyBind tertiary)
 {
     if (action == NULL)
-    {
         return;
-    }
+
     free(action->primary);
     action->primary = NULL;
     if (primary.code != SDLK_UNKNOWN)
@@ -326,6 +331,7 @@ void set_keybind(
         action->primary = malloc(sizeof(primary));
         memcpy(action->primary, &primary, sizeof(primary));
     }
+
     free(action->secondary);
     action->secondary = NULL;
     if (secondary.code != SDLK_UNKNOWN)
@@ -333,6 +339,7 @@ void set_keybind(
         action->secondary = malloc(sizeof(secondary));
         memcpy(action->secondary, &secondary, sizeof(secondary));
     }
+
     free(action->tertiary);
     action->tertiary = NULL;
     if (tertiary.code != SDLK_UNKNOWN)

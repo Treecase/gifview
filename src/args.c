@@ -41,12 +41,10 @@ OPTIONS\n\
 \n\
 Report bugs to: <https://github.com/Treecase/gifview/issues>\n\
 pkg home page: <https://github.com/Treecase/gifview>\
-        ");
+");
     }
     else
-    {
         printf("Try '%s --help' for more information.\n", name);
-    }
 }
 
 void version(void)
@@ -57,7 +55,7 @@ Copyright (C) 2022 Trevor Last\n\
 License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>\n\
 This is free software: you are free to change and redistribute it.\n\
 There is NO WARRANTY, to the extent permitted by law.\
-    ");
+");
 }
 
 char const *parse_args(int argc, char *argv[])
@@ -78,7 +76,7 @@ char const *parse_args(int argc, char *argv[])
     {
         switch (c)
         {
-        /* long options */
+        /* Long options. */
         case 0:
             switch (long_opt_ptr)
             {
@@ -96,7 +94,7 @@ char const *parse_args(int argc, char *argv[])
             }
             break;
 
-        /* unrecognized option */
+        /* Unrecognized option. */
         case '?':
             bad_args = true;
             break;
@@ -107,9 +105,7 @@ char const *parse_args(int argc, char *argv[])
         }
     }
     if (bad_args)
-    {
         exit(EXIT_FAILURE);
-    }
 
     if (optind >= argc)
     {

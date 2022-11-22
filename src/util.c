@@ -43,9 +43,7 @@ void linkedlist_append(LinkedList **head, LinkedList *end)
     }
     LinkedList *curr = *head;
     while (curr->next != NULL)
-    {
         curr = curr->next;
-    }
     curr->next = end;
 }
 
@@ -56,13 +54,9 @@ size_t efread(void *restrict ptr, size_t size, size_t n, FILE *restrict stream)
     if (value != n)
     {
         if (value == 0 && feof(stream))
-        {
             warn("Unexpected EOF.\n");
-        }
         else if (ferror(stream))
-        {
             fatal("%s\n", strerror(errno));
-        }
     }
     return value;
 }
