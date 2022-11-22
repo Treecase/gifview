@@ -31,11 +31,11 @@ extern size_t actions_count;
 
 /* Path to the global key config file. */
 static char const *const GLOBAL_KEYCONF_PATH =\
-    GIFVIEW_GLOBAL_CONFIG_DIR"/keys.conf";
+    GIFVIEW_GLOBAL_CONFIG_DIR "/keys.conf";
 
 /* Path to the local key config file (starting from $HOME). */
 static char const *const LOCAL_KEYCONF_PATH =\
-    "/.config/"GIFVIEW_PROGRAM_NAME"/keys.conf";
+    GIFVIEW_LOCAL_CONFIG_DIR "/keys.conf";
 
 /* Helper struct used only for default_keybinds array. */
 struct KeyDef

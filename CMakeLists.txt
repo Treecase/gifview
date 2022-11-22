@@ -1,31 +1,36 @@
-cmake_minimum_required(VERSION 3.10)
 
-project(gifview VERSION 0.1.0)
+cmake_minimum_required(VERSION 3.13)
 
-include(GNUInstallDirs)
+file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" LOC_PATH)
+if(EXISTS "${LOC_PATH}")
+    message(FATAL_ERROR "You cannot build in a source directory (or any directory with a CMakeLists.txt file). Please make a build subdirectory. Feel free to remove CMakeCache.txt and CMakeFiles.")
+endif()
 
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_STANDARD_REQUIRED True)
 
-set(keysconf_dir ${CMAKE_INSTALL_SYSCONFDIR}/${PROJECT_NAME})
-
-# extra warnings
-add_compile_options(-Wall -Wextra)
-
-configure_file("src/config.h.in" "config.h")
-
-set(srcs
-    "src/main.c"
-    "src/gif.c"
-    "src/util.c"
-    "src/lzw.c"
-    "src/args.c"
-    "src/keybinds.c"
+project(GIFView
+    VERSION 0.2.0
+    DESCRIPTION "GIF viewer in the style of feh."
+    LANGUAGES C
 )
-add_executable(${PROJECT_NAME} ${srcs})
-target_include_directories(${PROJECT_NAME} PUBLIC "${PROJECT_BINARY_DIR}")
-target_link_libraries(${PROJECT_NAME} SDL2)
 
-install(TARGETS ${PROJECT_NAME} RUNTIME)
-install(FILES "keys.conf"
-        DESTINATION ${keysconf_dir})
+
+# Dependencies
+find_package(SDL2 REQUIRED)
+
+
+# Declare targets
+add_executable(gifview)
+target_compile_features(gifview PRIVATE c_std_99)
+set_target_properties(gifview PROPERTIES C_EXTENSIONS OFF)
+target_include_directories(gifview PRIVATE "${PROJECT_BINARY_DIR}/include")
+target_link_libraries(gifview PRIVATE SDL2::SDL2)
+
+
+# Compile subdirs
+add_subdirectory(src)
+
+
+# Install
+include(GNUInstallDirs)
+install(TARGETS gifview RUNTIME)
+install(FILES keys.conf DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/gifview")

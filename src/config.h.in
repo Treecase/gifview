@@ -20,17 +20,14 @@
 #ifndef _GIFVIEW_CONFIG_H
 #define _GIFVIEW_CONFIG_H
 
-/* GIFView program canonical name. */
-#define GIFVIEW_PROGRAM_NAME    "@PROJECT_NAME@"
 
-/* GIFView major version number */
-#define GIFVIEW_VERSION_MAJOR   @gifview_VERSION_MAJOR@
-/* GIFView minor version number */
-#define GIFVIEW_VERSION_MINOR   @gifview_VERSION_MINOR@
-/* GIFView patch version number */
-#define GIFVIEW_VERSION_PATCH   @gifview_VERSION_PATCH@
+#define GIFVIEW_PROGRAM_NAME "@PROJECT_NAME@"
+#define GIFVIEW_VERSION "@PROJECT_VERSION@"
+#define GIFVIEW_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define GIFVIEW_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define GIFVIEW_VERSION_PATCH @PROJECT_VERSION_PATCH@
+#define GIFVIEW_GLOBAL_CONFIG_DIR "/etc/gifview"
+#define GIFVIEW_LOCAL_CONFIG_DIR "/.config/gifview"
 
-/* GIFView global config file location */
-#define GIFVIEW_GLOBAL_CONFIG_DIR   "@CMAKE_INSTALL_PREFIX@/@keysconf_dir@"
 
 #endif // _GIFVIEW_CONFIG_H

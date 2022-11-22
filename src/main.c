@@ -26,9 +26,14 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#define SDL_MAIN_HANDLED 1  // For compiling with MinGW.
 #include <SDL2/SDL.h>
-#undef SDL_MAIN_HANDLED
+
+
+#if _WIN32
+#define MAIN SDL_main
+#else
+#define MAIN main
+#endif
 
 
 /* SDL data for a GIF graphic. */
@@ -528,7 +533,7 @@ bool action_ispressed(struct Action action, SDL_Keysym event)
 }
 
 
-int main(int argc, char *argv[])
+int MAIN(int argc, char *argv[])
 {
     char const *const filename = parse_args(argc, argv);
     GIF gif = load_gif_from_file(filename);

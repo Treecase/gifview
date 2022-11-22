@@ -51,11 +51,7 @@ pkg home page: <https://github.com/Treecase/gifview>\
 
 void version(void)
 {
-    printf("%s %d.%d.%d\n",
-        GIFVIEW_PROGRAM_NAME,
-        GIFVIEW_VERSION_MAJOR,
-        GIFVIEW_VERSION_MINOR,
-        GIFVIEW_VERSION_PATCH);
+    puts(GIFVIEW_PROGRAM_NAME " " GIFVIEW_VERSION);
     puts("\
 Copyright (C) 2022 Trevor Last\n\
 License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>\n\
