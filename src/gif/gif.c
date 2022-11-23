@@ -19,7 +19,6 @@
 
 #include "gif.h"
 #include "lzw.h"
-#include "util.h"
 
 #include <errno.h>
 #include <math.h>
@@ -484,7 +483,7 @@ void read_GIF(FILE *file, GIF *gif)
 }
 
 
-GIF load_gif_from_file(char const *filename)
+GIF gif_from_file(char const *filename)
 {
     errno = 0;
     FILE *file = fopen(filename, "rb");
@@ -507,7 +506,7 @@ GIF load_gif_from_file(char const *filename)
     return gif;
 }
 
-void free_gif(GIF gif)
+void gif_free(GIF gif)
 {
     if (gif.global_color_table != NULL)
     {

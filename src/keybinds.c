@@ -220,7 +220,7 @@ void parse_keyconf(FILE *file)
         /* No keys, so the action is unbound. */
         if (p.i >= p.length)
         {
-            set_keybind(action, UNBOUND, UNBOUND, UNBOUND);
+            action_set_keybinds(action, UNBOUND, UNBOUND, UNBOUND);
             continue;
         }
 
@@ -242,7 +242,7 @@ void parse_keyconf(FILE *file)
         }
         if (p.i >= p.length)
         {
-            set_keybind(action, k1, UNBOUND, UNBOUND);
+            action_set_keybinds(action, k1, UNBOUND, UNBOUND);
             continue;
         }
         free(key1);
@@ -251,7 +251,7 @@ void parse_keyconf(FILE *file)
         skip_whitespace(&p);
         if (p.i >= p.length)
         {
-            set_keybind(action, k1, UNBOUND, UNBOUND);
+            action_set_keybinds(action, k1, UNBOUND, UNBOUND);
             continue;
         }
 
@@ -274,7 +274,7 @@ void parse_keyconf(FILE *file)
         free(key2);
         if (p.i >= p.length)
         {
-            set_keybind(action, k1, k2, UNBOUND);
+            action_set_keybinds(action, k1, k2, UNBOUND);
             continue;
         }
 
@@ -282,7 +282,7 @@ void parse_keyconf(FILE *file)
         skip_whitespace(&p);
         if (p.i >= p.length)
         {
-            set_keybind(action, k1, k2, UNBOUND);
+            action_set_keybinds(action, k1, k2, UNBOUND);
             continue;
         }
 
@@ -303,7 +303,7 @@ void parse_keyconf(FILE *file)
             break;
         }
         free(key3);
-        set_keybind(action, k1, k2, k3);
+        action_set_keybinds(action, k1, k2, k3);
 
         /* Make sure the rest of the line is blank. */
         skip_whitespace(&p);
@@ -316,8 +316,99 @@ void parse_keyconf(FILE *file)
     free(p.line);
 }
 
+/** Return true if BIND matches EVENT. */
+bool keybind_ispressed(struct KeyBind const *bind, SDL_Keysym event)
+{
+    if (bind == NULL || bind->code != event.sym)
+        return false;
 
-void set_keybind(
+    if (bind->modmask == KMOD_NONE)
+        return event.mod == KMOD_NONE;
+
+    SDL_Keymod const othermask = KMOD_NUM | KMOD_CAPS | KMOD_MODE | KMOD_SCROLL;
+
+#define FILTERMASK(b, e, filter) ((b & filter) == (e & filter))
+    /* We can't just check if the masks are equal, because this would require
+     * the user to press the left AND right modifier keys.  This is probably not
+     * what the event specifiction actually wants, so we have to do some extra
+     * checks to handle this correctly.  Here we do the naive behaviour, which
+     * works fine if the event specifies that only left/right side should work.
+     */
+    bool shift = FILTERMASK(bind->modmask, event.mod, KMOD_SHIFT);
+    bool ctrl = FILTERMASK(bind->modmask, event.mod, KMOD_CTRL);
+    bool alt = FILTERMASK(bind->modmask, event.mod, KMOD_ALT);
+    bool meta = FILTERMASK(bind->modmask, event.mod, KMOD_GUI);
+    bool other = FILTERMASK(bind->modmask, event.mod, othermask);
+#undef FILTERMASK
+
+    /* The above booleans will require BOTH sides to be pressed if the event
+     * says that either side is fine, which is not what we want.  To do the
+     * Right Thing, we check here if the event spec says either side is fine,
+     * and check only that *one of* the sides is pressed. */
+    if ((bind->modmask & KMOD_SHIFT) == KMOD_SHIFT)
+        shift = event.mod & KMOD_SHIFT;
+    if ((bind->modmask & KMOD_CTRL) == KMOD_CTRL)
+        ctrl = event.mod & KMOD_CTRL;
+    if ((bind->modmask & KMOD_ALT) == KMOD_ALT)
+        alt = event.mod & KMOD_ALT;
+    if ((bind->modmask & KMOD_GUI) == KMOD_GUI)
+        meta = event.mod & KMOD_GUI;
+
+    return shift && ctrl && alt && meta && other;
+}
+
+
+void keybinds_init(void)
+{
+    /* Clear any previously set keybinds. */
+    for (size_t i = 0; i < actions_count; ++i)
+    {
+        free(actions[i].primary);
+        free(actions[i].secondary);
+        free(actions[i].tertiary);
+        actions[i].primary = NULL;
+        actions[i].secondary = NULL;
+        actions[i].tertiary = NULL;
+    }
+
+    /* Set default keybinds. */
+    for (size_t i = 0; i < default_keybinds_count; ++i)
+    {
+        struct KeyDef const *const def = &default_keybinds[i];
+        struct Action *action = NULL;
+        if (parse_action(def->name, &action))
+        {
+            error("default_keybinds contains an invalid action name '%s'\n",
+                def->name);
+            continue;
+        }
+        action_set_keybinds(action, def->a, def->b, def->c);
+    }
+
+    /* Start with global config... */
+    FILE *conf = fopen(GLOBAL_KEYCONF_PATH, "r");
+    if (conf)
+    {
+        parse_keyconf(conf);
+        fclose(conf);
+    }
+
+    /* ..And now the local config. */
+    char const *home = getenv("HOME");
+    if (home)
+    {
+        char *confpath = estrcat(home, LOCAL_KEYCONF_PATH);
+        conf = fopen(confpath, "r");
+        if (conf)
+        {
+            parse_keyconf(conf);
+            fclose(conf);
+        }
+        free(confpath);
+    }
+}
+
+void action_set_keybinds(
     struct Action *action, struct KeyBind primary, struct KeyBind secondary,
     struct KeyBind tertiary)
 {
@@ -349,52 +440,10 @@ void set_keybind(
     }
 }
 
-void init_keybinds(void)
+bool action_ispressed(struct Action action, SDL_Keysym event)
 {
-    /* Clear any previously set keybinds. */
-    for (size_t i = 0; i < actions_count; ++i)
-    {
-        free(actions[i].primary);
-        free(actions[i].secondary);
-        free(actions[i].tertiary);
-        actions[i].primary = NULL;
-        actions[i].secondary = NULL;
-        actions[i].tertiary = NULL;
-    }
-
-    /* Set default keybinds. */
-    for (size_t i = 0; i < default_keybinds_count; ++i)
-    {
-        struct KeyDef const *const def = &default_keybinds[i];
-        struct Action *action = NULL;
-        if (parse_action(def->name, &action))
-        {
-            error("default_keybinds contains an invalid action name '%s'\n",
-                def->name);
-            continue;
-        }
-        set_keybind(action, def->a, def->b, def->c);
-    }
-
-    /* Start with global config... */
-    FILE *conf = fopen(GLOBAL_KEYCONF_PATH, "r");
-    if (conf)
-    {
-        parse_keyconf(conf);
-        fclose(conf);
-    }
-
-    /* ..And now the local config. */
-    char const *home = getenv("HOME");
-    if (home)
-    {
-        char *confpath = estrcat(home, LOCAL_KEYCONF_PATH);
-        conf = fopen(confpath, "r");
-        if (conf)
-        {
-            parse_keyconf(conf);
-            fclose(conf);
-        }
-        free(confpath);
-    }
+    return (
+        keybind_ispressed(action.primary, event)
+        || keybind_ispressed(action.secondary, event)
+        || keybind_ispressed(action.tertiary, event));
 }

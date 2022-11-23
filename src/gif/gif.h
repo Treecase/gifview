@@ -20,7 +20,7 @@
 #ifndef _GIFVIEW_GIF_H
 #define _GIFVIEW_GIF_H
 
-#include "util.h"
+#include "../util.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -123,10 +123,10 @@ typedef struct GIF
 
 
 /* Load a GIF from a file. */
-GIF load_gif_from_file(char const *filename);
+GIF gif_from_file(char const *filename);
 
 /* Deallocate GIF data. */
-void free_gif(GIF gif);
+void gif_free(GIF gif);
 
 
 #endif /* _GIFVIEW_GIF_H */

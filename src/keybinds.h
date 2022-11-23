@@ -22,6 +22,8 @@
 
 #include "util.h"
 
+#include <stdbool.h>
+
 #include <SDL2/SDL_keyboard.h>
 
 
@@ -36,20 +38,23 @@ struct KeyBind
 struct Action
 {
     char const *name;
-    void (*action)(void);
+    void (*action)(void *);
     struct KeyBind *primary;
     struct KeyBind *secondary;
     struct KeyBind *tertiary;
 };
 
 
+/** Reset default keybinds, read keyconf files. */
+void keybinds_init(void);
+
 /** Set ACTION's keybinds. */
-void set_keybind(
+void action_set_keybinds(
     struct Action *action, struct KeyBind primary, struct KeyBind secondary,
     struct KeyBind tertiary);
 
-/** Reset default keybinds, read keyconf files. */
-void init_keybinds(void);
+/** Return true if any of ACTION's KeyBinds matches EVENT. */
+bool action_ispressed(struct Action action, SDL_Keysym event);
 
 
 #endif /* _GIFVIEW_KEYBINDS_H */
