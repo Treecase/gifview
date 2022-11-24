@@ -100,10 +100,14 @@ int MAIN(int argc, char *argv[])
     struct Viewer viewer = {
         .running = true,
         .shift_amount = 2.5 * BACKGROUND_GRID_SIZE,
-        .zoom_change_multiplier = 2,
+        /* In feh, zooming in 3 times doubles the image's size.  Zooming is
+         * equivalent to exponentiation (eg. 3 zoom ins gives
+         * `n*2*2*2 = n * 2^3`).  Therefore our equation is `2 = m^3`.  Solving
+         * for m gives us our multiplier */
+        .zoom_change_multiplier = 1.259921049894873,
         .dd = {
-            .offset_x = G.width /2 - gif.width /2,
-            .offset_y = G.height/2 - gif.height/2,
+            .offset_x = 0,
+            .offset_y = 0,
             .zoom = 1.0,
         }
     };
@@ -123,16 +127,16 @@ int MAIN(int argc, char *argv[])
         /* Redraw the screen if dirty. */
         if (screen_dirty)
         {
-            struct Graphic *img = current_frame->data;
-            sdldata_clear_screen(&G);
-            int imgw = img->width * viewer.dd.zoom,
-                imgh = img->height * viewer.dd.zoom;
+            struct Graphic const *const img = current_frame->data;
+            int img_scaled_h = img->height * viewer.dd.zoom;
+            int img_scaled_w = img->width * viewer.dd.zoom;
             SDL_Rect position = {
-                .h = imgh,
-                .w = imgw,
-                .x = viewer.dd.offset_x,
-                .y = viewer.dd.offset_y
+                .h = img_scaled_h,
+                .w = img_scaled_w,
+                .x = G.width / 2 - img_scaled_w / 2 + viewer.dd.offset_x,
+                .y = G.height / 2 - img_scaled_h / 2 + viewer.dd.offset_y
             };
+            sdldata_clear_screen(&G);
             SDL_RenderCopy(G.renderer, img->texture, NULL, &position);
             SDL_RenderPresent(G.renderer);
             screen_dirty = false;
@@ -164,8 +168,8 @@ int MAIN(int argc, char *argv[])
                 G.width  = event.window.data1;
                 G.height = event.window.data2;
                 /* Recenter image when window changes size. */
-                viewer.dd.offset_x = G.width /2 - viewer.dd.zoom*gif.width /2;
-                viewer.dd.offset_y = G.height/2 - viewer.dd.zoom*gif.height/2;
+                viewer.dd.offset_x = 0;
+                viewer.dd.offset_y = 0;
                 sdldata_generate_bg_grid(&G);
             }
             break;

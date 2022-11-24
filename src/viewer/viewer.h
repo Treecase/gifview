@@ -37,7 +37,7 @@ struct Viewer
      */
     int shift_amount;
     /** How much to zoom in/out when +/- are pressed. */
-    int zoom_change_multiplier;
+    double zoom_change_multiplier;
     struct DrawData dd;
 };
 
