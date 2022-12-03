@@ -20,7 +20,7 @@
 
 #include "args.h"
 #include "keybinds.h"
-#include "sdldata.h"
+#include "sdlapp.h"
 #include "sdlgif.h"
 #include "viewer/viewer.h"
 
@@ -94,51 +94,24 @@ int MAIN(int argc, char *argv[])
     }
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER);
-    struct SDLData G = sdldata_new(gif.width, gif.height);
-    sdldata_clear_screen(&G);
-
-    struct Viewer viewer = {
-        .running = true,
-        .shift_amount = 2.5 * BACKGROUND_GRID_SIZE,
-        /* In feh, zooming in 3 times doubles the image's size.  Zooming is
-         * equivalent to exponentiation (eg. 3 zoom ins gives
-         * `n*2*2*2 = n * 2^3`).  Therefore our equation is `2 = m^3`.  Solving
-         * for m gives us our multiplier */
-        .zoom_change_multiplier = 1.259921049894873,
-        .dd = {
-            .offset_x = 0,
-            .offset_y = 0,
-            .zoom = 1.0,
-        }
-    };
+    struct App G = app_new(&gif);
 
     keybinds_init();
-
-    GraphicList images = graphiclist_new(G, gif);
-    GraphicList current_frame = images;
 
     /* Start the frame update timer. */
     SDL_TimerID timer = SDL_AddTimer(10, timer_callback, NULL);
     size_t timer_increment = 0;
 
     bool screen_dirty = true;
-    while (viewer.running)
+    while (G.view.running)
     {
         /* Redraw the screen if dirty. */
         if (screen_dirty)
         {
-            struct Graphic const *const img = current_frame->data;
-            int img_scaled_h = img->height * viewer.dd.zoom;
-            int img_scaled_w = img->width * viewer.dd.zoom;
-            SDL_Rect position = {
-                .h = img_scaled_h,
-                .w = img_scaled_w,
-                .x = G.width / 2 - img_scaled_w / 2 + viewer.dd.offset_x,
-                .y = G.height / 2 - img_scaled_h / 2 + viewer.dd.offset_y
-            };
-            sdldata_clear_screen(&G);
-            SDL_RenderCopy(G.renderer, img->texture, NULL, &position);
-            SDL_RenderPresent(G.renderer);
+            imagetransform_clamp(
+                &G.view.transform, gif.width, gif.height, G.width, G.height);
+            app_clear_screen(&G);
+            app_draw(&G);
             screen_dirty = false;
         }
 
@@ -147,56 +120,39 @@ int MAIN(int argc, char *argv[])
         switch (event.type)
         {
         case SDL_QUIT:
-            viewer_quit(&viewer);
+            viewer_quit(&G.view);
             break;
 
         case SDL_USEREVENT:
-            struct Graphic const *image = current_frame->data;
-            timer_increment++;
-            if (timer_increment >= image->delay)
-            {
-                current_frame = current_frame->next;
-                timer_increment = 0;
+            if (app_timer_increment(&G))
                 screen_dirty = true;
-            }
             break;
 
         case SDL_WINDOWEVENT:
             screen_dirty = true;
             if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
-            {
-                G.width  = event.window.data1;
-                G.height = event.window.data2;
-                /* Recenter image when window changes size. */
-                viewer.dd.offset_x = 0;
-                viewer.dd.offset_y = 0;
-                sdldata_generate_bg_grid(&G);
-            }
+                app_resize(&G, event.window.data1, event.window.data2);
             break;
 
         case SDL_KEYDOWN:
+            screen_dirty = true;
             for (size_t i = 0; i < actions_count; ++i)
                 if (action_ispressed(actions[i], event.key.keysym))
-                    actions[i].action(&viewer);
-            screen_dirty = true;
+                    actions[i].action(&G.view);
             break;
 
         case SDL_MOUSEMOTION:
             if (event.motion.state & SDL_BUTTON_LMASK)
             {
-                viewer.dd.offset_x += event.motion.xrel;
-                viewer.dd.offset_y += event.motion.yrel;
+                viewer_translate(&G.view, event.motion.xrel, event.motion.yrel);
                 screen_dirty = true;
             }
             break;
         }
-        drawdata_clamp(&viewer.dd, gif.width, gif.height, G.width, G.height);
     }
 
-    graphiclist_free(images);
-
     SDL_RemoveTimer(timer);
-    sdldata_free(&G);
+    app_free(&G);
     SDL_Quit();
 
     gif_free(gif);

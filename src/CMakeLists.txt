@@ -5,7 +5,7 @@ target_sources(gifview PRIVATE
     main.c
     args.c
     keybinds.c
-    sdldata.c
+    sdlapp.c
     sdlgif.c
     util.c
 )

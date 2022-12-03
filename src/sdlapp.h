@@ -1,5 +1,5 @@
 /*
- * sdldata.h -- SDLData struct.
+ * sdlapp.h -- App struct.
  *
  * Copyright (C) 2022 Trevor Last
  *
@@ -17,19 +17,25 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef _GIFVIEW_SDLDATA_H
-#define _GIFVIEW_SDLDATA_H
+#ifndef _GIFVIEW_SDLAPP_H
+#define _GIFVIEW_SDLAPP_H
+
+#include "sdlgif.h"
+#include "viewer/viewer.h"
 
 #include <SDL2/SDL.h>
 
 
-/** SDL data for the app. */
-struct SDLData
+/** SDL data for app. */
+struct App
 {
     SDL_Window *window;
     SDL_Renderer *renderer;
     SDL_Texture *bg_texture;
     int width, height;
+    struct Viewer view;
+    GraphicList images, current_frame;
+    size_t timer;
 };
 
 
@@ -43,16 +49,22 @@ static uint8_t const BACKGROUND_GRID_COLOR_B[3] = {0x90, 0x90, 0x90};
 
 
 /** Create SDL data. */
-struct SDLData sdldata_new(int window_width, int window_height);
+struct App app_new(GIF const *gif);
 
 /** Free SDL data. */
-void sdldata_free(struct SDLData const *data);
-
-/** Generate a background grid texture. */
-void sdldata_generate_bg_grid(struct SDLData *data);
+void app_free(struct App const *app);
 
 /** Clear the screen. */
-void sdldata_clear_screen(struct SDLData *data);
+void app_clear_screen(struct App *app);
+
+/** Increment the timer, returning true if we've moved to the next frame. */
+bool app_timer_increment(struct App *app);
+
+/** Draw the screen. */
+void app_draw(struct App *app);
+
+/** Resize the screen. */
+void app_resize(struct App *app, int width, int height);
 
 
-#endif /* _GIFVIEW_SDLDATA_H */
+#endif /* _GIFVIEW_SDLAPP_H */

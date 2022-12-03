@@ -22,37 +22,43 @@
 
 void viewer_zoom_in(struct Viewer *v)
 {
-    v->dd.zoom *= v->zoom_change_multiplier;
+    v->transform.zoom *= v->zoom_change_multiplier;
 }
 
 void viewer_zoom_out(struct Viewer *v)
 {
-    v->dd.zoom /= v->zoom_change_multiplier;
+    v->transform.zoom /= v->zoom_change_multiplier;
 }
 
 void viewer_zoom_reset(struct Viewer *v)
 {
-    v->dd.zoom = 1.0;
+    v->transform.zoom = 1.0;
+}
+
+void viewer_translate(struct Viewer *v, int dx, int dy)
+{
+    v->transform.offset_x += dx;
+    v->transform.offset_y += dy;
 }
 
 void viewer_shift_up(struct Viewer *v)
 {
-    v->dd.offset_y -= v->shift_amount;
+    viewer_translate(v, 0, -v->shift_amount);
 }
 
 void viewer_shift_down(struct Viewer *v)
 {
-    v->dd.offset_y += v->shift_amount;
+    viewer_translate(v, 0, +v->shift_amount);
 }
 
 void viewer_shift_right(struct Viewer *v)
 {
-    v->dd.offset_x -= v->shift_amount;
+    viewer_translate(v, -v->shift_amount, 0);
 }
 
 void viewer_shift_left(struct Viewer *v)
 {
-    v->dd.offset_x += v->shift_amount;
+    viewer_translate(v, v->shift_amount, 0);
 }
 
 void viewer_quit(struct Viewer *v)

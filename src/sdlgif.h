@@ -20,7 +20,6 @@
 #ifndef _GIFVIEW_SDLGIF_H
 #define _GIFVIEW_SDLGIF_H
 
-#include "sdldata.h"
 #include "util.h"
 #include "gif/gif.h"
 
@@ -48,7 +47,7 @@ typedef LinkedList *GraphicList;
 
 
 /** Generate a linked list of Graphics from a linked list of GIF_Graphics. */
-GraphicList graphiclist_new(struct SDLData G, GIF gif);
+GraphicList graphiclist_new(SDL_Renderer *renderer, GIF gif);
 
 /** Free a linked list of Graphics. */
 void graphiclist_free(GraphicList graphics);

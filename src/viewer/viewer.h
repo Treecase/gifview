@@ -20,7 +20,7 @@
 #ifndef _GIFVIEW_VIEWER_H
 #define _GIFVIEW_VIEWER_H
 
-#include "drawdata.h"
+#include "imagetransform.h"
 
 #include <stdbool.h>
 
@@ -38,7 +38,7 @@ struct Viewer
     int shift_amount;
     /** How much to zoom in/out when +/- are pressed. */
     double zoom_change_multiplier;
-    struct DrawData dd;
+    struct ImageTransform transform;
 };
 
 
@@ -50,6 +50,9 @@ void viewer_zoom_out(struct Viewer *v);
 
 /** Reset zoom level. */
 void viewer_zoom_reset(struct Viewer *v);
+
+/** Translate camera by DX,DY pixels. */
+void viewer_translate(struct Viewer *v, int dx, int dy);
 
 /** Shift camera up. */
 void viewer_shift_up(struct Viewer *v);

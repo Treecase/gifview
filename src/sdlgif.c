@@ -83,7 +83,7 @@ struct SurfaceGraphic *surfacegraphic_from_graphic(struct GIF_Graphic graphic)
 }
 
 
-GraphicList graphiclist_new(struct SDLData G, GIF gif)
+GraphicList graphiclist_new(SDL_Renderer *renderer, GIF gif)
 {
     SDL_Surface *frame = SDL_CreateRGBSurfaceWithFormat(
         0, gif.width, gif.height, 32, SDL_PIXELFORMAT_RGBA32);
@@ -104,7 +104,7 @@ GraphicList graphiclist_new(struct SDLData G, GIF gif)
                 frameout->width = gif.width;
                 frameout->height = gif.height;
                 frameout->texture = SDL_CreateTextureFromSurface(
-                    G.renderer, frame);
+                    renderer, frame);
                 linkedlist_append(&images, linkedlist_new(frameout));
                 if (node->next != NULL)
                 {
@@ -131,7 +131,7 @@ GraphicList graphiclist_new(struct SDLData G, GIF gif)
     {
         struct Graphic *frameout = malloc(sizeof(*frameout));
         frameout->delay = 0;
-        frameout->texture = SDL_CreateTextureFromSurface(G.renderer, frame);
+        frameout->texture = SDL_CreateTextureFromSurface(renderer, frame);
         linkedlist_append(&images, linkedlist_new(frameout));
         SDL_FreeSurface(frame);
     }

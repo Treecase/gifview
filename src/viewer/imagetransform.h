@@ -1,5 +1,5 @@
 /*
- * drawdata.h -- DrawData struct.
+ * imagetransform.h -- ImageTransform struct.
  *
  * Copyright (C) 2022 Trevor Last
  *
@@ -17,12 +17,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef _GIFVIEW_DRAWDATA_H
-#define _GIFVIEW_DRAWDATA_H
+#ifndef _GIFVIEW_IMAGETRANSFORM_H
+#define _GIFVIEW_IMAGETRANSFORM_H
 
 
 /** How to draw the image (scaling, offsets). */
-struct DrawData
+struct ImageTransform
 {
     double zoom;
     int offset_x, offset_y;
@@ -33,8 +33,10 @@ struct DrawData
  * Clamp DD's offsets such that an IMG_W x IMG_H sized image transformed by it
  * will be within a MAX_X x MAX_Y bounding-box.
  */
-void drawdata_clamp(
-    struct DrawData *dd, int img_w, int img_h, int max_x, int max_y);
+void imagetransform_clamp(
+    struct ImageTransform *transform,
+    int img_w, int img_h,
+    int max_x, int max_y);
 
 
-#endif /* _GIFVIEW_DRAWDATA_H */
+#endif /* _GIFVIEW_IMAGETRANSFORM_H */
