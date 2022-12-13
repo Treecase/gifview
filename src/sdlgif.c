@@ -20,23 +20,44 @@
 #include "sdlgif.h"
 
 
-/** Create a SurfaceGraphic from a GIF_Graphic. */
-struct SurfaceGraphic *surfacegraphic_from_graphic(struct GIF_Graphic graphic)
+/**
+ * Interstitial structure used to construct the full frames contained in the
+ * Graphic struct.  SDL representation of a GIF_Graphic.
+ */
+struct SurfaceGraphic
 {
-    if (!graphic.is_img)
-        return NULL;
+    SDL_Rect rect;
+    SDL_Surface *surface;
+};
 
-    struct GIF_Image image = graphic.img;
+
+/** Convert a GIF_ColorTable to an SDL color table. */
+SDL_Color *_sdl_color_from_gif_colortable(struct GIF_ColorTable const *table)
+{
+    SDL_Color *colors = malloc(sizeof(SDL_Color) * table->size);
+    for (size_t i = 0; i < table->size; ++i)
+    {
+        colors[i].r = table->colors[(3 * i) + 0];
+        colors[i].g = table->colors[(3 * i) + 1];
+        colors[i].b = table->colors[(3 * i) + 2];
+        colors[i].a = 255;
+    }
+    return colors;
+}
+
+/** Create a SurfaceGraphic from a GIF_Image. */
+struct SurfaceGraphic *surfacegraphic_from_image(struct GIF_Image const *image)
+{
     struct SurfaceGraphic *out = malloc(sizeof(*out));
-    out->rect.x = image.left;
-    out->rect.y = image.right;
-    out->rect.w = image.width;
-    out->rect.h = image.height;
+    out->rect.x = image->left;
+    out->rect.y = image->top;
+    out->rect.w = image->width;
+    out->rect.h = image->height;
     out->surface = SDL_CreateRGBSurfaceWithFormatFrom(
-        image.pixels,
-        image.width, image.height,
+        image->pixels,
+        image->width, image->height,
         8,
-        image.width,
+        image->width,
         SDL_PIXELFORMAT_INDEX8);
 
     if (out->surface == NULL)
@@ -45,106 +66,168 @@ struct SurfaceGraphic *surfacegraphic_from_graphic(struct GIF_Graphic graphic)
         free(out);
         return NULL;
     }
+    return out;
+}
 
-    if (graphic.extension)
+/** Create a SurfaceGraphic from a GIF_Graphic. */
+struct SurfaceGraphic *surfacegraphic_from_graphic(struct GIF_Graphic const *graphic)
+{
+    if (!graphic->is_img)
+        return NULL;
+
+    struct GIF_Image const *const image = &graphic->img;
+    struct SurfaceGraphic *out = surfacegraphic_from_image(&graphic->img);
+    if (!out)
+        return NULL;
+
+    /* Set transparency color. */
+    if (graphic->extension && graphic->extension->transparent_color_flag)
     {
-        if (graphic.extension->transparent_color_flag)
-        {
-            SDL_SetColorKey(
-                out->surface,
-                SDL_TRUE,
-                graphic.extension->transparent_color_idx);
-        }
+        SDL_SetColorKey(
+            out->surface, SDL_TRUE, graphic->extension->transparent_color_idx);
     }
 
-    struct GIF_ColorTable const *table = image.color_table;
-    if (table == NULL)
+    /* SurfaceGraphic uses indexed color so we need a color table. */
+    if (!image->color_table)
     {
         warn("surfacegraphic_from_graphic: Image has no palette!\n");
         return out;
     }
-    SDL_Color *colors = malloc(sizeof(SDL_Color) * table->size);
-    for (size_t i = 0; i < table->size; ++i)
-    {
-        colors[i].r = table->colors[(3*i)+0];
-        colors[i].g = table->colors[(3*i)+1];
-        colors[i].b = table->colors[(3*i)+2];
-        colors[i].a = 255;
-    }
-
-    if (SDL_SetPaletteColors(
-            out->surface->format->palette, colors, 0, table->size)
-        != 0)
-    {
+    struct GIF_ColorTable const *const table = image->color_table;
+    SDL_Color *colors = _sdl_color_from_gif_colortable(table);
+    int err = SDL_SetPaletteColors(
+        out->surface->format->palette, colors, 0, table->size);
+    if (err != 0)
         error("SDL_SetPaletteColors -- %s\n", SDL_GetError());
-    }
     free(colors);
+
     return out;
 }
 
+/** Free a SurfaceGraphic. */
+void surfacegraphic_free(struct SurfaceGraphic *sg)
+{
+    SDL_FreeSurface(sg->surface);
+    free(sg);
+}
+
+
+/** Create a new Graphic. */
+struct Graphic *graphic_new(void)
+{
+    struct Graphic *graphic = malloc(sizeof(struct Graphic));
+    graphic->delay = 0;
+    graphic->width = 0;
+    graphic->height = 0;
+    graphic->texture = NULL;
+    return graphic;
+}
+
+
+/**
+ * Construct a frame of a GIF.  START will be updated to point to the
+ * last processed graphic.  NEXTFRAME will be updated to contain the basis for
+ * the next frame.
+ */
+SDL_Surface *_make_frame(LinkedList const **start, SDL_Surface **nextframe)
+{
+    LinkedList const *const start_orig = *start;
+    LinkedList *surfacegraphics = NULL;
+
+    /* Step through graphics until we find a graphic with a nonzero delay time,
+     * which marks the start of a new frame. */
+    for (; *start != NULL; *start = (*start)->next)
+    {
+        struct GIF_Graphic const *const graphic = (*start)->data;
+        /* TODO: PlainText graphics are skipped for now. */
+        if (!graphic->is_img)
+            continue;
+        struct SurfaceGraphic *g = surfacegraphic_from_graphic(graphic);
+        linkedlist_append(&surfacegraphics, linkedlist_new(g));
+        if (graphic->extension && graphic->extension->delay_time != 0)
+            break;
+    }
+
+    /* Create the current frame, copying over data from the previous frame. */
+    SDL_Surface *frame = SDL_CreateRGBSurfaceWithFormat(
+        0, (*nextframe)->w, (*nextframe)->h, 32, SDL_PIXELFORMAT_RGBA32);
+    SDL_BlitSurface(*nextframe, NULL, frame, NULL);
+
+    LinkedList const *gcurr = start_orig;
+    LinkedList *sgcurr = surfacegraphics;
+    for (; sgcurr != NULL; gcurr = gcurr->next)
+    {
+        struct GIF_Graphic const *const g = gcurr->data;
+        struct SurfaceGraphic *const sg = sgcurr->data;
+
+        /* Apply the graphic to the next frame according to its disposal
+         * method. */
+        enum DisposalMethod const dm = (
+            g->extension
+            ? g->extension->disposal_method
+            : GIF_DisposalMethod_None);
+        switch (dm)
+        {
+        case GIF_DisposalMethod_RestorePrevious:
+            /* NEXTFRAME is the same as previous so don't draw the graphic. */
+            break;
+        case GIF_DisposalMethod_RestoreBackground:
+            /* TODO: Fill rect w/ bg color */
+            break;
+        default:
+            SDL_BlitSurface(sg->surface, NULL, *nextframe, &sg->rect);
+            break;
+        }
+
+        SDL_BlitSurface(sg->surface, NULL, frame, &sg->rect);
+
+        /* Free the list behind us. */
+        LinkedList *old = sgcurr;
+        sgcurr = sgcurr->next;
+        surfacegraphic_free(old->data);
+        free(old);
+    }
+
+    return frame;
+}
 
 GraphicList graphiclist_new(SDL_Renderer *renderer, GIF gif)
 {
-    SDL_Surface *frame = SDL_CreateRGBSurfaceWithFormat(
+    SDL_Surface *lastframe = SDL_CreateRGBSurfaceWithFormat(
         0, gif.width, gif.height, 32, SDL_PIXELFORMAT_RGBA32);
-    SDL_FillRect(frame, NULL, SDL_MapRGBA(frame->format, 0, 0, 0, 0xff));
+    SDL_FillRect(lastframe, NULL, SDL_MapRGBA(lastframe->format, 0, 0, 0, 0));
 
-    GraphicList images = NULL;
-    for (GraphicList node = gif.graphics; node != NULL; node = node->next)
+    GraphicList out = NULL;
+
+    LinkedList const *node = gif.graphics;
+    while (node)
     {
-        struct GIF_Graphic *graphic = node->data;
-        if (graphic->is_img)
-        {
-            struct SurfaceGraphic *g = surfacegraphic_from_graphic(*graphic);
-            SDL_BlitSurface(g->surface, NULL, frame, &g->rect);
-            if (graphic->extension)
-            {
-                struct Graphic *frameout = malloc(sizeof(*frameout));
-                frameout->delay = graphic->extension->delay_time;
-                frameout->width = gif.width;
-                frameout->height = gif.height;
-                frameout->texture = SDL_CreateTextureFromSurface(
-                    renderer, frame);
-                linkedlist_append(&images, linkedlist_new(frameout));
-                if (node->next != NULL)
-                {
-                    SDL_Surface *newframe = SDL_CreateRGBSurfaceWithFormat(
-                        0, gif.width, gif.height, 32, SDL_PIXELFORMAT_RGBA32);
-                    SDL_BlitSurface(frame, NULL, newframe, NULL);
-                    SDL_FreeSurface(frame);
-                    frame = newframe;
-                }
-                else
-                {
-                    frame = NULL;
-                }
-            }
-            SDL_FreeSurface(g->surface);
-            free(g);
-        }
-        else
-        {
-            /* TODO: PlainText rendering. */
-        }
-    }
-    if (frame != NULL)
-    {
-        struct Graphic *frameout = malloc(sizeof(*frameout));
-        frameout->delay = 0;
-        frameout->texture = SDL_CreateTextureFromSurface(renderer, frame);
-        linkedlist_append(&images, linkedlist_new(frameout));
+        SDL_Surface *frame = _make_frame(&node, &lastframe);
+
+        struct GIF_Graphic *g = node->data;
+        struct Graphic *frame_g = graphic_new();
+        frame_g->delay = g->extension? g->extension->delay_time : 0;
+        frame_g->width = frame->w;
+        frame_g->height = frame->h;
+        frame_g->texture = SDL_CreateTextureFromSurface(renderer, frame);
+
         SDL_FreeSurface(frame);
+
+        linkedlist_append(&out, linkedlist_new(frame_g));
+        node = node->next;
     }
+
     /* Make the list circular, for free looping. */
-    for (GraphicList g = images; g != NULL; g = g->next)
+    for (GraphicList g = out; g != NULL; g = g->next)
     {
         if (g->next == NULL)
         {
-            g->next = images;
+            g->next = out;
             break;
         }
     }
-    return images;
+
+    return out;
 }
 
 void graphiclist_free(GraphicList graphics)
@@ -153,8 +236,8 @@ void graphiclist_free(GraphicList graphics)
     {
         struct Graphic *graphic = node->data;
         SDL_DestroyTexture(graphic->texture);
-        GraphicList next = node->next;
         free(graphic);
+        GraphicList next = node->next;
         free(node);
         if (node == graphics)
             break;

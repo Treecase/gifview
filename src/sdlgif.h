@@ -26,19 +26,12 @@
 #include <SDL2/SDL.h>
 
 
-/** SDL data for a GIF graphic. */
+/** SDL data for a GIF graphic.  Represents a complete frame of a GIF. */
 struct Graphic
 {
     SDL_Texture *texture;
     int width, height;
     size_t delay;
-};
-
-/** SurfaceGraphic. */
-struct SurfaceGraphic
-{
-    SDL_Rect rect;
-    SDL_Surface *surface;
 };
 
 
