@@ -31,10 +31,8 @@ void imagetransform_clamp(
     int img_w, int img_h,
     int max_x, int max_y)
 {
-#define DD2WINCOORDSX(x)    (x + max_x / 2)
-#define DD2WINCOORDSY(y)    (y + max_y / 2)
-#define WIN2DDCOORDSX(x)    (x - max_x / 2)
-#define WIN2DDCOORDSY(y)    (y - max_y / 2)
+    int const half_max_x = max_x / 2;
+    int const half_max_y = max_y / 2;
 
     int const scaled_img_w = img_w * transform->zoom;
     int const scaled_img_h = img_h * transform->zoom;
@@ -42,10 +40,10 @@ void imagetransform_clamp(
     int const half_scaled_img_h = scaled_img_h / 2;
 
     struct Rect const img_rect = {
-        DD2WINCOORDSX(transform->offset_x) - half_scaled_img_w,
-        DD2WINCOORDSX(transform->offset_x) + half_scaled_img_w,
-        DD2WINCOORDSY(transform->offset_y) - half_scaled_img_h,
-        DD2WINCOORDSY(transform->offset_y) + half_scaled_img_h
+        transform->offset_x + half_max_x - half_scaled_img_w,
+        transform->offset_x + half_max_x + half_scaled_img_w,
+        transform->offset_y + half_max_y - half_scaled_img_h,
+        transform->offset_y + half_max_y + half_scaled_img_h
     };
     struct Rect const win_rect = {0, max_x, 0, max_y};
 
@@ -59,12 +57,12 @@ void imagetransform_clamp(
     struct Rect const *lil_y = max_y >= scaled_img_h? &img_rect : &win_rect;
 
     if (lil_x->left < big_x->left)
-        transform->offset_x = WIN2DDCOORDSX(win_rect.left) + half_scaled_img_w;
+        transform->offset_x = win_rect.left - half_max_x + half_scaled_img_w;
     if (lil_x->right > big_x->right)
-        transform->offset_x = WIN2DDCOORDSX(win_rect.right) - half_scaled_img_w;
+        transform->offset_x = win_rect.right - half_max_x - half_scaled_img_w;
 
     if (lil_y->top < big_y->top)
-        transform->offset_y = WIN2DDCOORDSY(win_rect.top) + half_scaled_img_w;
+        transform->offset_y = win_rect.top - half_max_y + half_scaled_img_h;
     if (lil_y->bottom > big_y->bottom)
-        transform->offset_y = WIN2DDCOORDSY(win_rect.bottom) - half_scaled_img_w;
+        transform->offset_y = win_rect.bottom - half_max_y - half_scaled_img_h;
 }
