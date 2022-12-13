@@ -219,7 +219,7 @@ void read_image_descriptor(FILE *file, struct GIF_Image *image)
     uint8_t fields;
 
     efread(&image->left, 2, 1, file);
-    efread(&image->right, 2, 1, file);
+    efread(&image->top, 2, 1, file);
     efread(&image->width, 2, 1, file);
     efread(&image->height, 2, 1, file);
     efread(&fields, 1, 1, file);
