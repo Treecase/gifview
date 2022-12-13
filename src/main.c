@@ -37,20 +37,52 @@
 #endif
 
 
+/* Used for Actions.  Actions are passed the App, but we need to call Viewer
+ * functions.  This macro gets around this by letting us call FN on &G->FIELD.
+ */
+#define PROXY(name, fn, field) void name(struct App *G){fn(&G->field);}
+
+PROXY(zoom_in, viewer_zoom_in, view);
+PROXY(zoom_out, viewer_zoom_out, view);
+PROXY(zoom_reset, viewer_zoom_reset, view);
+PROXY(shift_up, viewer_shift_up, view);
+PROXY(shift_down, viewer_shift_down, view);
+PROXY(shift_right, viewer_shift_right, view);
+PROXY(shift_left, viewer_shift_left, view);
+PROXY(quit, viewer_quit, view);
+
+void togglepause(struct App *G)
+{
+    G->paused = !G->paused;
+}
+void stepforward(struct App *G)
+{
+    G->paused = true;
+    app_next_frame(G);
+}
+void stepbackward(struct App *G)
+{
+    G->paused = true;
+    app_previous_frame(G);
+}
+
 #pragma GCC diagnostic push
 /* The viewer_* functions are void(Viewer *) but Action wants a void(void *).
  * void * can be safely converted to anything so it shouldn't be an issue. */
 #pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
 /** List of keybindable actions. */
 struct Action actions[] = {
-    {"zoom_in",     viewer_zoom_in,     NULL, NULL, NULL},
-    {"zoom_out",    viewer_zoom_out,    NULL, NULL, NULL},
-    {"reset_zoom",  viewer_zoom_reset,  NULL, NULL, NULL},
-    {"shift_up",    viewer_shift_up,    NULL, NULL, NULL},
-    {"shift_down",  viewer_shift_down,  NULL, NULL, NULL},
-    {"shift_right", viewer_shift_right, NULL, NULL, NULL},
-    {"shift_left",  viewer_shift_left,  NULL, NULL, NULL},
-    {"quit",        viewer_quit,        NULL, NULL, NULL},
+    {"zoom_in",     zoom_in,     NULL, NULL, NULL},
+    {"zoom_out",    zoom_out,    NULL, NULL, NULL},
+    {"zoom_reset",  zoom_reset,  NULL, NULL, NULL},
+    {"shift_up",    shift_up,    NULL, NULL, NULL},
+    {"shift_down",  shift_down,  NULL, NULL, NULL},
+    {"shift_right", shift_right, NULL, NULL, NULL},
+    {"shift_left",  shift_left,  NULL, NULL, NULL},
+    {"quit",        quit,        NULL, NULL, NULL},
+    {"stepforward", stepforward, NULL, NULL, NULL},
+    {"stepbackward",stepbackward,NULL, NULL, NULL},
+    {"togglepause", togglepause, NULL, NULL, NULL},
 };
 #pragma GCC diagnostic pop
 
@@ -100,7 +132,6 @@ int MAIN(int argc, char *argv[])
 
     /* Start the frame update timer. */
     SDL_TimerID timer = SDL_AddTimer(10, timer_callback, NULL);
-    size_t timer_increment = 0;
 
     bool screen_dirty = true;
     while (G.view.running)
@@ -138,7 +169,7 @@ int MAIN(int argc, char *argv[])
             screen_dirty = true;
             for (size_t i = 0; i < actions_count; ++i)
                 if (action_ispressed(actions[i], event.key.keysym))
-                    actions[i].action(&G.view);
+                    actions[i].action(&G);
             break;
 
         case SDL_MOUSEMOTION:

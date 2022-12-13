@@ -36,6 +36,7 @@ struct App
     struct Viewer view;
     GraphicList images, current_frame;
     size_t timer;
+    bool paused;
 };
 
 
@@ -59,6 +60,15 @@ void app_clear_screen(struct App *app);
 
 /** Increment the timer, returning true if we've moved to the next frame. */
 bool app_timer_increment(struct App *app);
+
+/**
+ * Move to the next frame.  (Normally done automatically by timer_increment.
+ * Use this if you want to change frames manually, eg. by user input.)
+ */
+void app_next_frame(struct App *app);
+
+/** Move to the previous frame. */
+void app_previous_frame(struct App *app);
 
 /** Draw the screen. */
 void app_draw(struct App *app);

@@ -51,12 +51,15 @@ struct KeyDef
 static struct KeyDef const default_keybinds[] = {
     {"zoom_in",     {SDLK_UP,         0}, {SDLK_KP_PLUS, 0},         UNBOUND},
     {"zoom_out",    {SDLK_DOWN,       0}, {SDLK_KP_MINUS,0},         UNBOUND},
-    {"reset_zoom",  {SDLK_KP_MULTIPLY,0}, {SDLK_8,       KMOD_SHIFT},UNBOUND},
+    {"zoom_reset",  {SDLK_KP_MULTIPLY,0}, {SDLK_8,       KMOD_SHIFT},UNBOUND},
     {"shift_up",    {SDLK_KP_2,       0}, {SDLK_DOWN,    KMOD_CTRL}, UNBOUND},
     {"shift_down",  {SDLK_KP_8,       0}, {SDLK_UP,      KMOD_CTRL}, UNBOUND},
     {"shift_right", {SDLK_KP_6,       0}, {SDLK_RIGHT,   KMOD_CTRL}, UNBOUND},
     {"shift_left",  {SDLK_KP_4,       0}, {SDLK_LEFT,    KMOD_CTRL}, UNBOUND},
     {"quit",        {SDLK_ESCAPE,     0}, {SDLK_q,       0},         UNBOUND},
+    {"stepforward", {SDLK_PERIOD,     0}, UNBOUND,                   UNBOUND},
+    {"stepbackward",{SDLK_COMMA,      0}, UNBOUND,                   UNBOUND},
+    {"togglepause", {SDLK_p,          0}, UNBOUND,                   UNBOUND},
 };
 
 /** Number of items in the default_keybinds array. */

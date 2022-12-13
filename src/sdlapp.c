@@ -107,6 +107,8 @@ struct App app_new(GIF const *gif)
 
     app.images = graphiclist_new(app.renderer, *gif);
     app.current_frame = app.images;
+    app.timer = 0;
+    app.paused = false;
 
     _generate_bg_grid(&app);
     return app;
@@ -127,15 +129,31 @@ void app_clear_screen(struct App *app)
 
 bool app_timer_increment(struct App *app)
 {
+    if (app->paused)
+        return false;
     struct Graphic const *image = app->current_frame->data;
     app->timer++;
     if (app->timer >= image->delay)
     {
-        app->current_frame = app->current_frame->next;
-        app->timer = 0;
+        app_next_frame(app);
         return true;
     }
     return false;
+}
+
+void app_next_frame(struct App *app)
+{
+    app->current_frame = app->current_frame->next;
+    app->timer = 0;
+}
+
+void app_previous_frame(struct App *app)
+{
+    GraphicList current = app->current_frame;
+    // TODO: Switch to doubly-linked lists to simplify.
+    while (app->current_frame->next != current)
+        app_next_frame(app);
+    app->timer = 0;
 }
 
 void app_draw(struct App *app)
