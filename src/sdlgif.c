@@ -129,7 +129,7 @@ struct Graphic *graphic_new(void)
  * last processed graphic.  NEXTFRAME will be updated to contain the basis for
  * the next frame.
  */
-SDL_Surface *_make_frame(LinkedList const **start, SDL_Surface **nextframe)
+SDL_Surface *_make_frame(LinkedList const **start, SDL_Surface **nextframe, GIF const *gif)
 {
     LinkedList const *const start_orig = *start;
     LinkedList *surfacegraphics = NULL;
@@ -160,19 +160,36 @@ SDL_Surface *_make_frame(LinkedList const **start, SDL_Surface **nextframe)
         struct GIF_Graphic const *const g = gcurr->data;
         struct SurfaceGraphic *const sg = sgcurr->data;
 
+        struct GIF_GraphicExt const *const extension = g->extension;
+
         /* Apply the graphic to the next frame according to its disposal
          * method. */
-        enum DisposalMethod const dm = (
-            g->extension
-            ? g->extension->disposal_method
-            : GIF_DisposalMethod_None);
+        enum DisposalMethod const dm =\
+            extension? extension->disposal_method : GIF_DisposalMethod_None;
         switch (dm)
         {
         case GIF_DisposalMethod_RestorePrevious:
             /* NEXTFRAME is the same as previous so don't draw the graphic. */
             break;
         case GIF_DisposalMethod_RestoreBackground:
-            /* TODO: Fill rect w/ bg color */
+            uint8_t bg[4] = {0, 0, 0, 0};
+            struct GIF_ColorTable const * const gct = gif->global_color_table;
+            if (gct)
+            {
+                uint8_t const index = gif->bg_color_index;
+                memcpy(bg, gct->colors + index * 3, 3);
+                bool const bg_is_transparent = (
+                    extension->transparent_color_flag
+                    && extension->transparent_color_idx == index);
+                if (bg_is_transparent)
+                    bg[3] = 0;
+                else
+                    bg[3] = 255;
+            }
+            SDL_FillRect(
+                *nextframe,
+                &sg->rect,
+                SDL_MapRGBA((*nextframe)->format, bg[0], bg[1], bg[2], bg[3]));
             break;
         default:
             SDL_BlitSurface(sg->surface, NULL, *nextframe, &sg->rect);
@@ -202,7 +219,7 @@ GraphicList graphiclist_new(SDL_Renderer *renderer, GIF gif)
     LinkedList const *node = gif.graphics;
     while (node)
     {
-        SDL_Surface *frame = _make_frame(&node, &lastframe);
+        SDL_Surface *frame = _make_frame(&node, &lastframe, &gif);
 
         struct GIF_Graphic *g = node->data;
         struct Graphic *frame_g = graphic_new();
