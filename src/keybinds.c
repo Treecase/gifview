@@ -49,17 +49,28 @@ struct KeyDef
 
 /** Default keybinds. */
 static struct KeyDef const default_keybinds[] = {
-    {"zoom_in",     {SDLK_UP,         0}, {SDLK_KP_PLUS, 0},         UNBOUND},
-    {"zoom_out",    {SDLK_DOWN,       0}, {SDLK_KP_MINUS,0},         UNBOUND},
-    {"zoom_reset",  {SDLK_KP_MULTIPLY,0}, {SDLK_8,       KMOD_SHIFT},UNBOUND},
-    {"shift_up",    {SDLK_KP_2,       0}, {SDLK_DOWN,    KMOD_CTRL}, UNBOUND},
-    {"shift_down",  {SDLK_KP_8,       0}, {SDLK_UP,      KMOD_CTRL}, UNBOUND},
-    {"shift_right", {SDLK_KP_6,       0}, {SDLK_RIGHT,   KMOD_CTRL}, UNBOUND},
-    {"shift_left",  {SDLK_KP_4,       0}, {SDLK_LEFT,    KMOD_CTRL}, UNBOUND},
-    {"quit",        {SDLK_ESCAPE,     0}, {SDLK_q,       0},         UNBOUND},
-    {"stepforward", {SDLK_PERIOD,     0}, UNBOUND,                   UNBOUND},
-    {"stepbackward",{SDLK_COMMA,      0}, UNBOUND,                   UNBOUND},
-    {"togglepause", {SDLK_p,          0}, UNBOUND,                   UNBOUND},
+    /* General */
+    {"quit", {SDLK_ESCAPE, 0}, {SDLK_q, 0}, UNBOUND},
+    {"fullscreen_toggle", {SDLK_f}, UNBOUND, UNBOUND},
+    /* Zoom */
+    {"zoom_in", {SDLK_UP, 0}, {SDLK_KP_PLUS, 0}, UNBOUND},
+    {"zoom_out", {SDLK_DOWN, 0}, {SDLK_KP_MINUS,0}, UNBOUND},
+    {"zoom_default", {SDLK_KP_MULTIPLY,0}, {SDLK_8, KMOD_SHIFT}, UNBOUND},
+    /* Scroll */
+    {"scroll_up", {SDLK_KP_2, 0}, {SDLK_DOWN, KMOD_CTRL}, UNBOUND},
+    {"scroll_down", {SDLK_KP_8, 0}, {SDLK_UP, KMOD_CTRL}, UNBOUND},
+    {"scroll_right", {SDLK_KP_6, 0}, {SDLK_RIGHT, KMOD_CTRL}, UNBOUND},
+    {"scroll_left", {SDLK_KP_4, 0}, {SDLK_LEFT, KMOD_CTRL}, UNBOUND},
+    /* Playback */
+    {"pause_toggle", {SDLK_p, 0}, UNBOUND, UNBOUND},
+    {"loop_toggle", {SDLK_l, 0}, {SDLK_l, KMOD_SHIFT}, UNBOUND},
+    {"speed_down", {SDLK_LEFTBRACKET, 0}, UNBOUND, UNBOUND},
+    {"speed_up", {SDLK_RIGHTBRACKET, 0}, UNBOUND, UNBOUND},
+    {"speed_half", {SDLK_LEFTBRACKET, KMOD_SHIFT}, UNBOUND, UNBOUND},
+    {"speed_double", {SDLK_RIGHTBRACKET, KMOD_SHIFT}, UNBOUND, UNBOUND},
+    {"speed_reset", {SDLK_BACKSPACE, 0}, UNBOUND, UNBOUND},
+    {"step_next", {SDLK_PERIOD, 0}, UNBOUND, UNBOUND},
+    {"step_previous", {SDLK_COMMA, 0}, UNBOUND, UNBOUND},
 };
 
 /** Number of items in the default_keybinds array. */

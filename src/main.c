@@ -37,30 +37,88 @@
 #endif
 
 
-/* Used for Actions.  Actions are passed the App, but we need to call Viewer
- * functions.  This macro gets around this by letting us call FN on &G->FIELD.
- */
-#define PROXY(name, fn, field) void name(struct App *G){fn(&G->field);}
+/* ===[ Action Callbacks ]=== */
+/* General */
+void quit(struct App *G)
+{
+    viewer_quit(&G->view);
+}
+void fullscreen_toggle(struct App *G)
+{
+    if (SDL_GetWindowFlags(G->window) & SDL_WINDOW_FULLSCREEN_DESKTOP)
+        SDL_SetWindowFullscreen(G->window, 0);
+    else
+        SDL_SetWindowFullscreen(G->window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+}
 
-PROXY(zoom_in, viewer_zoom_in, view);
-PROXY(zoom_out, viewer_zoom_out, view);
-PROXY(zoom_reset, viewer_zoom_reset, view);
-PROXY(shift_up, viewer_shift_up, view);
-PROXY(shift_down, viewer_shift_down, view);
-PROXY(shift_right, viewer_shift_right, view);
-PROXY(shift_left, viewer_shift_left, view);
-PROXY(quit, viewer_quit, view);
+/* Zoom */
+void zoom_in(struct App *G)
+{
+    viewer_zoom_in(&G->view);
+}
+void zoom_out(struct App *G)
+{
+    viewer_zoom_out(&G->view);
+}
+void zoom_default(struct App *G)
+{
+    viewer_zoom_reset(&G->view);
+}
 
-void togglepause(struct App *G)
+/* Scroll */
+void scroll_up(struct App *G)
+{
+    viewer_shift_up(&G->view);
+}
+void scroll_down(struct App *G)
+{
+    viewer_shift_down(&G->view);
+}
+void scroll_right(struct App *G)
+{
+    viewer_shift_right(&G->view);
+}
+void scroll_left(struct App *G)
+{
+    viewer_shift_left(&G->view);
+}
+
+/* Playback */
+void pause_toggle(struct App *G)
 {
     G->paused = !G->paused;
 }
-void stepforward(struct App *G)
+void loop_toggle(struct App *G)
+{
+    puts("loop toggle");
+    G->looping = !G->looping;
+}
+void speed_down(struct App *G)
+{
+    G->playback_speed *= 0.9;
+}
+void speed_up(struct App *G)
+{
+    G->playback_speed *= 1.1;
+}
+void speed_half(struct App *G)
+{
+    G->playback_speed *= 0.5;
+}
+void speed_double(struct App *G)
+{
+    G->playback_speed *= 2.0;
+}
+void speed_reset(struct App *G)
+{
+    G->playback_speed = 1.0;
+}
+void step_next(struct App *G)
 {
     G->paused = true;
     app_next_frame(G);
 }
-void stepbackward(struct App *G)
+void step_previous(struct App *G)
 {
     G->paused = true;
     app_previous_frame(G);
@@ -72,17 +130,28 @@ void stepbackward(struct App *G)
 #pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
 /** List of keybindable actions. */
 struct Action actions[] = {
-    {"zoom_in",     zoom_in,     NULL, NULL, NULL},
-    {"zoom_out",    zoom_out,    NULL, NULL, NULL},
-    {"zoom_reset",  zoom_reset,  NULL, NULL, NULL},
-    {"shift_up",    shift_up,    NULL, NULL, NULL},
-    {"shift_down",  shift_down,  NULL, NULL, NULL},
-    {"shift_right", shift_right, NULL, NULL, NULL},
-    {"shift_left",  shift_left,  NULL, NULL, NULL},
-    {"quit",        quit,        NULL, NULL, NULL},
-    {"stepforward", stepforward, NULL, NULL, NULL},
-    {"stepbackward",stepbackward,NULL, NULL, NULL},
-    {"togglepause", togglepause, NULL, NULL, NULL},
+    /* General */
+    {"quit", quit, NULL, NULL, NULL},
+    {"fullscreen_toggle", fullscreen_toggle, NULL, NULL, NULL},
+    /* Zoom */
+    {"zoom_in", zoom_in, NULL, NULL, NULL},
+    {"zoom_out", zoom_out, NULL, NULL, NULL},
+    {"zoom_default", zoom_default, NULL, NULL, NULL},
+    /* Scroll */
+    {"scroll_up", scroll_up, NULL, NULL, NULL},
+    {"scroll_down", scroll_down, NULL, NULL, NULL},
+    {"scroll_right", scroll_right, NULL, NULL, NULL},
+    {"scroll_left", scroll_left, NULL, NULL, NULL},
+    /* Playback */
+    {"pause_toggle", pause_toggle, NULL, NULL, NULL},
+    {"loop_toggle", loop_toggle, NULL, NULL, NULL},
+    {"speed_down", speed_down, NULL, NULL, NULL},
+    {"speed_up", speed_up, NULL, NULL, NULL},
+    {"speed_half", speed_half, NULL, NULL, NULL},
+    {"speed_double", speed_double, NULL, NULL, NULL},
+    {"speed_reset", speed_reset, NULL, NULL, NULL},
+    {"step_next", step_next, NULL, NULL, NULL},
+    {"step_previous", step_previous, NULL, NULL, NULL},
 };
 #pragma GCC diagnostic pop
 

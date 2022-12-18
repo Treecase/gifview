@@ -37,6 +37,8 @@ struct App
     GraphicList images, current_frame;
     size_t timer;
     bool paused;
+    bool looping;
+    double playback_speed;
 };
 
 

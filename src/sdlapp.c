@@ -109,6 +109,7 @@ struct App app_new(GIF const *gif)
     app.current_frame = app.images;
     app.timer = 0;
     app.paused = false;
+    app.playback_speed = 1.0;
 
     _generate_bg_grid(&app);
     return app;
@@ -133,8 +134,10 @@ bool app_timer_increment(struct App *app)
         return false;
     struct Graphic const *image = app->current_frame->data;
     app->timer++;
-    if (app->timer >= image->delay)
+    if (app->timer * app->playback_speed >= image->delay)
     {
+        if (!app->looping && app->current_frame->next == app->images)
+            return false;
         app_next_frame(app);
         return true;
     }
