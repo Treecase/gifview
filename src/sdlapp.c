@@ -109,6 +109,7 @@ struct App app_new(GIF const *gif)
     app.current_frame = app.images;
     app.timer = 0;
     app.paused = false;
+    app.looping = true;
     app.playback_speed = 1.0;
 
     _generate_bg_grid(&app);

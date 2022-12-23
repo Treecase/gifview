@@ -33,4 +33,4 @@ add_subdirectory(src)
 # Install
 include(GNUInstallDirs)
 install(TARGETS gifview RUNTIME)
-install(FILES keys.conf DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/gifview")
+install(FILES keys.conf TYPE SYSCONF RENAME gifview/keys.conf)
