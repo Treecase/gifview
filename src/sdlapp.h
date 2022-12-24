@@ -22,6 +22,7 @@
 
 #include "sdlgif.h"
 #include "viewer/viewer.h"
+#include "fontrenderer.h"
 
 #include <SDL2/SDL.h>
 
@@ -32,13 +33,14 @@ struct App
     SDL_Window *window;
     SDL_Renderer *renderer;
     SDL_Texture *bg_texture;
+    struct TextRenderer *paused_text, *looping_text;
     int width, height;
     struct Viewer view;
     GraphicList images, current_frame;
     size_t timer;
-    bool paused;
-    bool looping;
+    bool paused, looping;
     double playback_speed;
+    bool state_text_visible;
 };
 
 
@@ -77,6 +79,12 @@ void app_draw(struct App *app);
 
 /** Resize the screen. */
 void app_resize(struct App *app, int width, int height);
+
+/** Set app paused state. */
+void app_set_paused(struct App *app, bool paused);
+
+/** Set app looping state. */
+void app_set_looping(struct App *app, bool looping);
 
 
 #endif /* _GIFVIEW_SDLAPP_H */

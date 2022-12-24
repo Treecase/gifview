@@ -18,6 +18,7 @@
  */
 
 #include "sdlapp.h"
+#include "font.h"
 #include "util.h"
 #include "gif/gif.h"
 
@@ -92,6 +93,15 @@ struct App app_new(GIF const *gif)
 
     app.bg_texture = NULL;
 
+    app.paused_text = textrenderer_new(DEFAULT_FONT_PATH, DEFAULT_FONT_SIZE);
+    if (app.paused_text->font == NULL)
+        SDL_Log("Failed to load font: %s\n", TTF_GetError());
+    app.looping_text = textrenderer_new(DEFAULT_FONT_PATH, DEFAULT_FONT_SIZE);
+    if (app.looping_text->font == NULL)
+        SDL_Log("Failed to load font: %s\n", TTF_GetError());
+    textrenderer_set_text(app.paused_text, app.renderer, "paused ?");
+    textrenderer_set_text(app.looping_text, app.renderer, "looping ?");
+
     SDL_GetWindowSize(app.window, &app.width, &app.height);
 
     app.view.running = true,
@@ -108,9 +118,10 @@ struct App app_new(GIF const *gif)
     app.images = graphiclist_new(app.renderer, *gif);
     app.current_frame = app.images;
     app.timer = 0;
-    app.paused = false;
-    app.looping = true;
+    app_set_paused(&app, false);
+    app_set_looping(&app, true);
     app.playback_speed = 1.0;
+    app.state_text_visible = false;
 
     _generate_bg_grid(&app);
     return app;
@@ -119,6 +130,7 @@ struct App app_new(GIF const *gif)
 void app_free(struct App const *app)
 {
     graphiclist_free(app->images);
+    textrenderer_free(app->paused_text);
     SDL_DestroyTexture(app->bg_texture);
     SDL_DestroyRenderer(app->renderer);
     SDL_DestroyWindow(app->window);
@@ -165,6 +177,17 @@ void app_draw(struct App *app)
     struct Graphic const *const img = app->current_frame->data;
     SDL_Rect const position = _get_current_frame_rect(app);
     SDL_RenderCopy(app->renderer, img->texture, NULL, &position);
+    if (app->state_text_visible)
+    {
+        SDL_Rect moved_looping_rect = app->looping_text->rect;
+        moved_looping_rect.y += app->paused_text->rect.h;
+        SDL_RenderCopy(
+            app->renderer, app->paused_text->texture,
+            NULL, &app->paused_text->rect);
+        SDL_RenderCopy(
+            app->renderer, app->looping_text->texture,
+            NULL, &moved_looping_rect);
+    }
     SDL_RenderPresent(app->renderer);
 }
 
@@ -176,4 +199,22 @@ void app_resize(struct App *app, int width, int height)
     app->view.transform.offset_x = 0;
     app->view.transform.offset_y = 0;
     _generate_bg_grid(app);
+}
+
+void app_set_paused(struct App *app, bool paused)
+{
+    app->paused = paused;
+    textrenderer_set_text(
+        app->paused_text,
+        app->renderer,
+        app->paused? "paused TRUE" : "paused FALSE");
+}
+
+void app_set_looping(struct App *app, bool looping)
+{
+    app->looping = looping;
+    textrenderer_set_text(
+        app->looping_text,
+        app->renderer,
+        app->looping? "looping TRUE" : "looping FALSE");
 }

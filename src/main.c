@@ -28,6 +28,7 @@
 #include <stdbool.h>
 
 #include <SDL2/SDL.h>
+#include <SDL_ttf.h>
 
 
 #if _WIN32
@@ -86,12 +87,11 @@ void scroll_left(struct App *G)
 /* Playback */
 void pause_toggle(struct App *G)
 {
-    G->paused = !G->paused;
+    app_set_paused(G, !G->paused);
 }
 void loop_toggle(struct App *G)
 {
-    puts("loop toggle");
-    G->looping = !G->looping;
+    app_set_looping(G, !G->looping);
 }
 void speed_down(struct App *G)
 {
@@ -115,12 +115,12 @@ void speed_reset(struct App *G)
 }
 void step_next(struct App *G)
 {
-    G->paused = true;
+    app_set_paused(G, true);
     app_next_frame(G);
 }
 void step_previous(struct App *G)
 {
-    G->paused = true;
+    app_set_paused(G, true);
     app_previous_frame(G);
 }
 
@@ -195,6 +195,13 @@ int MAIN(int argc, char *argv[])
     }
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER);
+    if (TTF_Init() != 0)
+    {
+        SDL_Log("TTF_Init failed: %s\n", TTF_GetError());
+        SDL_Quit();
+        return EXIT_FAILURE;
+    }
+
     struct App G = app_new(&gif);
 
     keybinds_init();
@@ -248,11 +255,22 @@ int MAIN(int argc, char *argv[])
                 screen_dirty = true;
             }
             break;
+
+        case SDL_MOUSEBUTTONDOWN:
+            if (event.button.button == SDL_BUTTON_RIGHT)
+                G.state_text_visible = true;
+            break;
+
+        case SDL_MOUSEBUTTONUP:
+            if (event.button.button == SDL_BUTTON_RIGHT)
+                G.state_text_visible = false;
+            break;
         }
     }
 
     SDL_RemoveTimer(timer);
     app_free(&G);
+    TTF_Quit();
     SDL_Quit();
 
     gif_free(gif);
