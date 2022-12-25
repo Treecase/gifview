@@ -258,12 +258,18 @@ int MAIN(int argc, char *argv[])
 
         case SDL_MOUSEBUTTONDOWN:
             if (event.button.button == SDL_BUTTON_RIGHT)
+            {
                 G.state_text_visible = true;
+                screen_dirty = true;
+            }
             break;
 
         case SDL_MOUSEBUTTONUP:
             if (event.button.button == SDL_BUTTON_RIGHT)
+            {
                 G.state_text_visible = false;
+                screen_dirty = true;
+            }
             break;
         }
     }

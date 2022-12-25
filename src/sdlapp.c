@@ -150,22 +150,30 @@ bool app_timer_increment(struct App *app)
 {
     if (app->paused)
         return false;
+    /* TODO: Clean this up.  If looping is disabled, don't advance past
+     * the final frame of the animation. */
+    if (!app->looping && app->current_frame->next == app->images)
+        return false;
+    bool advanced = false;
     struct Graphic const *image = app->current_frame->data;
-    app->timer++;
-    if (app->timer * app->playback_speed >= image->delay)
+    app->timer += app->playback_speed;
+    while (app->timer >= image->delay)
     {
+        /* TODO: Clean this up.  If looping is disabled, don't advance past
+         * the final frame of the animation. */
         if (!app->looping && app->current_frame->next == app->images)
-            return false;
+            return advanced;
         app_next_frame(app);
-        return true;
+        advanced = true;
     }
-    return false;
+    return advanced;
 }
 
 void app_next_frame(struct App *app)
 {
+    struct Graphic const *const image = app->current_frame->data;
+    app->timer -= image->delay;
     app->current_frame = app->current_frame->next;
-    app->timer = 0;
 }
 
 void app_previous_frame(struct App *app)

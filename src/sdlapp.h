@@ -37,7 +37,7 @@ struct App
     int width, height;
     struct Viewer view;
     GraphicList images, current_frame;
-    size_t timer;
+    double timer;
     bool paused, looping;
     double playback_speed;
     bool state_text_visible;
