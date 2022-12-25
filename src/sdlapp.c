@@ -99,8 +99,13 @@ struct App app_new(GIF const *gif)
     app.looping_text = textrenderer_new(DEFAULT_FONT_PATH, DEFAULT_FONT_SIZE);
     if (app.looping_text->font == NULL)
         SDL_Log("Failed to load font: %s\n", TTF_GetError());
-    textrenderer_set_text(app.paused_text, app.renderer, "paused ?");
-    textrenderer_set_text(app.looping_text, app.renderer, "looping ?");
+    app.playback_speed_text = textrenderer_new(DEFAULT_FONT_PATH, DEFAULT_FONT_SIZE);
+    if (app.playback_speed_text->font == NULL)
+        SDL_Log("Failed to load font: %s\n", TTF_GetError());
+    textrenderer_set_text(app.paused_text, app.renderer, "Paused ?");
+    textrenderer_set_text(app.looping_text, app.renderer, "Looping ?");
+    textrenderer_set_text(
+        app.playback_speed_text, app.renderer, "Playback Speed ?");
 
     SDL_GetWindowSize(app.window, &app.width, &app.height);
 
@@ -120,7 +125,7 @@ struct App app_new(GIF const *gif)
     app.timer = 0;
     app_set_paused(&app, false);
     app_set_looping(&app, true);
-    app.playback_speed = 1.0;
+    app_set_playback_speed(&app, 1.0);
     app.state_text_visible = false;
 
     _generate_bg_grid(&app);
@@ -181,12 +186,17 @@ void app_draw(struct App *app)
     {
         SDL_Rect moved_looping_rect = app->looping_text->rect;
         moved_looping_rect.y += app->paused_text->rect.h;
+        SDL_Rect moved_playback_speed_rect = app->playback_speed_text->rect;
+        moved_playback_speed_rect.y += moved_looping_rect.y + moved_looping_rect.h;
         SDL_RenderCopy(
             app->renderer, app->paused_text->texture,
             NULL, &app->paused_text->rect);
         SDL_RenderCopy(
             app->renderer, app->looping_text->texture,
             NULL, &moved_looping_rect);
+        SDL_RenderCopy(
+            app->renderer, app->playback_speed_text->texture,
+            NULL, &moved_playback_speed_rect);
     }
     SDL_RenderPresent(app->renderer);
 }
@@ -217,4 +227,14 @@ void app_set_looping(struct App *app, bool looping)
         app->looping_text,
         app->renderer,
         app->looping? "looping TRUE" : "looping FALSE");
+}
+
+void app_set_playback_speed(struct App *app, double playback_speed)
+{
+    app->playback_speed = playback_speed;
+    int size = snprintf(NULL, 0, "Playback Speed %g", app->playback_speed);
+    char *str = calloc(size + 1, 1);
+    snprintf(str, size + 1, "Playback Speed %g", app->playback_speed);
+    textrenderer_set_text(app->playback_speed_text, app->renderer, str);
+    free(str);
 }

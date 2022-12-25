@@ -95,23 +95,23 @@ void loop_toggle(struct App *G)
 }
 void speed_down(struct App *G)
 {
-    G->playback_speed *= 0.9;
+    app_set_playback_speed(G, G->playback_speed * 0.9);
 }
 void speed_up(struct App *G)
 {
-    G->playback_speed *= 1.1;
+    app_set_playback_speed(G, G->playback_speed * 1.1);
 }
 void speed_half(struct App *G)
 {
-    G->playback_speed *= 0.5;
+    app_set_playback_speed(G, G->playback_speed * 0.5);
 }
 void speed_double(struct App *G)
 {
-    G->playback_speed *= 2.0;
+    app_set_playback_speed(G, G->playback_speed * 2.0);
 }
 void speed_reset(struct App *G)
 {
-    G->playback_speed = 1.0;
+    app_set_playback_speed(G, 1.0);
 }
 void step_next(struct App *G)
 {

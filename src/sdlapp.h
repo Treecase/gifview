@@ -33,7 +33,7 @@ struct App
     SDL_Window *window;
     SDL_Renderer *renderer;
     SDL_Texture *bg_texture;
-    struct TextRenderer *paused_text, *looping_text;
+    struct TextRenderer *paused_text, *looping_text, *playback_speed_text;
     int width, height;
     struct Viewer view;
     GraphicList images, current_frame;
@@ -85,6 +85,9 @@ void app_set_paused(struct App *app, bool paused);
 
 /** Set app looping state. */
 void app_set_looping(struct App *app, bool looping);
+
+/** Set app playback speed. */
+void app_set_playback_speed(struct App *app, double playback_speed);
 
 
 #endif /* _GIFVIEW_SDLAPP_H */
