@@ -22,6 +22,17 @@
 #include "util.h"
 #include "gif/gif.h"
 
+#include <math.h>
+
+
+/** Size (in pixels) of background grid squares. */
+static int const BACKGROUND_GRID_SIZE = 8;
+
+/** Color for even-numbered background grid squares. */
+static uint8_t const BACKGROUND_GRID_COLOR_A[3] = {0x64, 0x64, 0x64};
+/** Color for odd-numbered background grid squares. */
+static uint8_t const BACKGROUND_GRID_COLOR_B[3] = {0x90, 0x90, 0x90};
+
 
 SDL_Rect _get_current_frame_rect(struct App const *app)
 {
@@ -71,6 +82,12 @@ void _generate_bg_grid(struct App *app)
     SDL_DestroyTexture(app->bg_texture);
     app->bg_texture = SDL_CreateTextureFromSurface(app->renderer, grid_surf);
     SDL_FreeSurface(grid_surf);
+}
+
+/** Returns true if the app is on the final frame, false otherwise. */
+bool _is_app_on_final_frame(struct App const *app)
+{
+    return app->current_frame->next == app->images;
 }
 
 
@@ -123,6 +140,12 @@ struct App app_new(GIF const *gif)
     app.images = graphiclist_new(app.renderer, *gif);
     app.current_frame = app.images;
     app.timer = 0;
+    app.full_time = 0;
+    for (GraphicList curr = app.images; curr->next != app.images; curr = curr->next)
+    {
+        struct Graphic const *const img = curr->data;
+        app.full_time += img->delay;
+    }
     app_set_paused(&app, false);
     app_set_looping(&app, true);
     app_set_playback_speed(&app, 1.0);
@@ -148,23 +171,22 @@ void app_clear_screen(struct App *app)
 
 bool app_timer_increment(struct App *app)
 {
-    if (app->paused)
-        return false;
-    /* TODO: Clean this up.  If looping is disabled, don't advance past
-     * the final frame of the animation. */
-    if (!app->looping && app->current_frame->next == app->images)
+    if (!viewer_should_timer_increment(&app->view))
         return false;
     bool advanced = false;
-    struct Graphic const *image = app->current_frame->data;
-    app->timer += app->playback_speed;
-    while (app->timer >= image->delay)
+    app->timer = fmod(app->timer + app->view.playback_speed, app->full_time);
+    for (
+        struct Graphic const *image = app->current_frame->data;
+        app->timer >= image->delay;
+        image = app->current_frame->data)
     {
-        /* TODO: Clean this up.  If looping is disabled, don't advance past
-         * the final frame of the animation. */
-        if (!app->looping && app->current_frame->next == app->images)
-            return advanced;
-        app_next_frame(app);
-        advanced = true;
+        if (_is_app_on_final_frame(app) && !app->view.looping)
+            break;
+        else
+        {
+            app_next_frame(app);
+            advanced = true;
+        }
     }
     return advanced;
 }
@@ -213,36 +235,35 @@ void app_resize(struct App *app, int width, int height)
 {
     app->width  = width;
     app->height = height;
-    /* Image is recentered on size changes. */
-    app->view.transform.offset_x = 0;
-    app->view.transform.offset_y = 0;
+    viewer_transform_reset(&app->view);
     _generate_bg_grid(app);
 }
 
 void app_set_paused(struct App *app, bool paused)
 {
-    app->paused = paused;
+    app->view.paused = paused;
     textrenderer_set_text(
         app->paused_text,
         app->renderer,
-        app->paused? "paused TRUE" : "paused FALSE");
+        app->view.paused? "paused TRUE" : "paused FALSE");
 }
 
 void app_set_looping(struct App *app, bool looping)
 {
-    app->looping = looping;
+    app->view.looping = looping;
     textrenderer_set_text(
         app->looping_text,
         app->renderer,
-        app->looping? "looping TRUE" : "looping FALSE");
+        app->view.looping? "looping TRUE" : "looping FALSE");
 }
 
 void app_set_playback_speed(struct App *app, double playback_speed)
 {
-    app->playback_speed = playback_speed;
-    int size = snprintf(NULL, 0, "Playback Speed %g", app->playback_speed);
+    static char const *const FMT = "Playback Speed %#g";
+    app->view.playback_speed = playback_speed;
+    int size = snprintf(NULL, 0, FMT, app->view.playback_speed);
     char *str = calloc(size + 1, 1);
-    snprintf(str, size + 1, "Playback Speed %g", app->playback_speed);
+    snprintf(str, size + 1, FMT, app->view.playback_speed);
     textrenderer_set_text(app->playback_speed_text, app->renderer, str);
     free(str);
 }

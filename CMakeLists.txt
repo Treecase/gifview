@@ -8,7 +8,7 @@ endif()
 
 
 project(GIFView
-    VERSION 0.2.0
+    VERSION 0.3.0
     DESCRIPTION "GIF viewer in the style of feh."
     LANGUAGES C
 )
@@ -24,7 +24,7 @@ add_executable(gifview)
 target_compile_features(gifview PRIVATE c_std_99)
 set_target_properties(gifview PROPERTIES C_EXTENSIONS OFF)
 target_include_directories(gifview PRIVATE "${PROJECT_BINARY_DIR}/include")
-target_link_libraries(gifview PRIVATE SDL2::SDL2 SDL2_ttf::SDL2_ttf)
+target_link_libraries(gifview PRIVATE SDL2::SDL2 SDL2_ttf::SDL2_ttf m)
 
 
 # Compile subdirs

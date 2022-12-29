@@ -1,5 +1,5 @@
 /*
- * viewer.h-- Viewer struct.
+ * viewer.h -- Viewer struct.
  *
  * Copyright (C) 2022 Trevor Last
  *
@@ -38,7 +38,14 @@ struct Viewer
     int shift_amount;
     /** How much to zoom in/out when +/- are pressed. */
     double zoom_change_multiplier;
+    /** Image positioning. */
     struct ImageTransform transform;
+    /** Is playback paused? */
+    bool paused;
+    /** Is playback looping? */
+    bool looping;
+    /** Playback speed multiplier. */
+    double playback_speed;
 };
 
 
@@ -50,6 +57,9 @@ void viewer_zoom_out(struct Viewer *v);
 
 /** Reset zoom level. */
 void viewer_zoom_reset(struct Viewer *v);
+
+/** Reset camera transform. */
+void viewer_transform_reset(struct Viewer *v);
 
 /** Translate camera by DX,DY pixels. */
 void viewer_translate(struct Viewer *v, int dx, int dy);
@@ -68,6 +78,9 @@ void viewer_shift_left(struct Viewer *v);
 
 /** Quit the app. */
 void viewer_quit(struct Viewer *v);
+
+/** Return true if the timer should be allowed to increment, false otherwise. */
+bool viewer_should_timer_increment(struct Viewer *v);
 
 
 #endif /* _GIFVIEW_VIEWER_H */

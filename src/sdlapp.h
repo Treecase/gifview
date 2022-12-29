@@ -27,7 +27,9 @@
 #include <SDL2/SDL.h>
 
 
-/** SDL data for app. */
+/**
+ * SDL-specific app data.  Acts as a view/controller for a Viewer.
+ */
 struct App
 {
     SDL_Window *window;
@@ -37,20 +39,13 @@ struct App
     int width, height;
     struct Viewer view;
     GraphicList images, current_frame;
+    /** Time since last frame (in 100ths of a second [centiseconds]). */
     double timer;
-    bool paused, looping;
-    double playback_speed;
+    /** Total length of the animation (in 100ths of a second). */
+    double full_time;
+    /** Is the state display text visible? */
     bool state_text_visible;
 };
-
-
-/** Size (in pixels) of background grid squares. */
-static int const BACKGROUND_GRID_SIZE = 8;
-
-/** Color for even-numbered background grid squares. */
-static uint8_t const BACKGROUND_GRID_COLOR_A[3] = {0x64, 0x64, 0x64};
-/** Color for odd-numbered background grid squares. */
-static uint8_t const BACKGROUND_GRID_COLOR_B[3] = {0x90, 0x90, 0x90};
 
 
 /** Create SDL data. */

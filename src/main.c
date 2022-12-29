@@ -87,27 +87,27 @@ void scroll_left(struct App *G)
 /* Playback */
 void pause_toggle(struct App *G)
 {
-    app_set_paused(G, !G->paused);
+    app_set_paused(G, !G->view.paused);
 }
 void loop_toggle(struct App *G)
 {
-    app_set_looping(G, !G->looping);
+    app_set_looping(G, !G->view.looping);
 }
 void speed_down(struct App *G)
 {
-    app_set_playback_speed(G, G->playback_speed * 0.9);
+    app_set_playback_speed(G, G->view.playback_speed - 0.1);
 }
 void speed_up(struct App *G)
 {
-    app_set_playback_speed(G, G->playback_speed * 1.1);
+    app_set_playback_speed(G, G->view.playback_speed + 0.1);
 }
 void speed_half(struct App *G)
 {
-    app_set_playback_speed(G, G->playback_speed * 0.5);
+    app_set_playback_speed(G, G->view.playback_speed * 0.5);
 }
 void speed_double(struct App *G)
 {
-    app_set_playback_speed(G, G->playback_speed * 2.0);
+    app_set_playback_speed(G, G->view.playback_speed * 2.0);
 }
 void speed_reset(struct App *G)
 {

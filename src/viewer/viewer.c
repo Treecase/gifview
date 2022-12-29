@@ -1,5 +1,5 @@
 /*
- * viewer.c-- Viewer struct.
+ * viewer.c -- Viewer struct.
  *
  * Copyright (C) 2022 Trevor Last
  *
@@ -35,6 +35,12 @@ void viewer_zoom_reset(struct Viewer *v)
     v->transform.zoom = 1.0;
 }
 
+void viewer_transform_reset(struct Viewer *v)
+{
+    v->transform.offset_x = 0;
+    v->transform.offset_y = 0;
+}
+
 void viewer_translate(struct Viewer *v, int dx, int dy)
 {
     v->transform.offset_x += dx;
@@ -64,4 +70,11 @@ void viewer_shift_left(struct Viewer *v)
 void viewer_quit(struct Viewer *v)
 {
     v->running = false;
+}
+
+bool viewer_should_timer_increment(struct Viewer *v)
+{
+    if (v->paused)
+        return false;
+    return true;
 }
