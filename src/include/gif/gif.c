@@ -19,6 +19,7 @@
 
 #include "gif.h"
 #include "lzw.h"
+#include "util.h"
 
 #include <errno.h>
 #include <math.h>

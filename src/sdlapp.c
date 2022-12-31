@@ -18,6 +18,7 @@
  */
 
 #include "sdlapp.h"
+#include "config.h"
 #include "font.h"
 #include "util.h"
 #include "gif/gif.h"
@@ -91,15 +92,18 @@ bool _is_app_on_final_frame(struct App const *app)
 }
 
 
-struct App app_new(GIF const *gif)
+struct App app_new(GIF const *gif, char const *path)
 {
     struct App app;
 
+    char *windowtitle = NULL;
+    sprintfa(&windowtitle, "%s - %s", GIFVIEW_PROGRAM_NAME, path);
     app.window = SDL_CreateWindow(
-        "GIF View",
+        windowtitle,
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         gif->width, gif->height,
         SDL_WINDOW_RESIZABLE);
+    free(windowtitle);
     if (app.window == NULL)
         fatal("Failed to create window: %s\n", SDL_GetError());
 
@@ -259,11 +263,9 @@ void app_set_looping(struct App *app, bool looping)
 
 void app_set_playback_speed(struct App *app, double playback_speed)
 {
-    static char const *const FMT = "Playback Speed %#g";
     app->view.playback_speed = playback_speed;
-    int size = snprintf(NULL, 0, FMT, app->view.playback_speed);
-    char *str = calloc(size + 1, 1);
-    snprintf(str, size + 1, FMT, app->view.playback_speed);
+    char *str = NULL;
+    sprintfa(&str, "Playback Speed %#g", app->view.playback_speed);
     textrenderer_set_text(app->playback_speed_text, app->renderer, str);
     free(str);
 }

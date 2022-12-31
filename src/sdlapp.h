@@ -21,8 +21,8 @@
 #define _GIFVIEW_SDLAPP_H
 
 #include "sdlgif.h"
-#include "viewer/viewer.h"
 #include "fontrenderer.h"
+#include "viewer/viewer.h"
 
 #include <SDL2/SDL.h>
 
@@ -49,7 +49,7 @@ struct App
 
 
 /** Create SDL data. */
-struct App app_new(GIF const *gif);
+struct App app_new(GIF const *gif, char const *path);
 
 /** Free SDL data. */
 void app_free(struct App const *app);

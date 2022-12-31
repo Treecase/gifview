@@ -20,7 +20,7 @@
 #ifndef _GIFVIEW_GIF_H
 #define _GIFVIEW_GIF_H
 
-#include "../util.h"
+#include "linkedlist/linkedlist.h"
 
 #include <stdbool.h>
 #include <stddef.h>

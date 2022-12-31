@@ -21,31 +21,9 @@
 
 #include <errno.h>
 #include <stdarg.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-
-LinkedList *linkedlist_new(void *data)
-{
-    LinkedList *new = malloc(sizeof(LinkedList));
-    new->data = data;
-    new->next = NULL;
-    return new;
-}
-
-void linkedlist_append(LinkedList **head, LinkedList *end)
-{
-    if (*head == NULL)
-    {
-        *head = end;
-        return;
-    }
-    LinkedList *curr = *head;
-    while (curr->next != NULL)
-        curr = curr->next;
-    curr->next = end;
-}
 
 size_t efread(void *restrict ptr, size_t size, size_t n, FILE *restrict stream)
 {
@@ -70,4 +48,21 @@ char *estrcat(char const *prefix, char const *suffix)
     memcpy(out + prefix_len, suffix, suffix_len);
     out[prefix_len + suffix_len] = '\0';
     return out;
+}
+
+int sprintfa(char **restrict str, char const *restrict fmt, ...)
+{
+    va_list ap, ap2;
+    va_start(ap, fmt);
+    va_copy(ap2, ap);
+
+    int count = vsnprintf(NULL, 0, fmt, ap);
+    if (!str)
+        return count;
+    *str = calloc(count + 1, 1);
+    count = vsnprintf(*str, count + 1, fmt, ap2);
+
+    va_end(ap);
+    va_end(ap2);
+    return count;
 }

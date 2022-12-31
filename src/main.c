@@ -202,7 +202,7 @@ int MAIN(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    struct App G = app_new(&gif);
+    struct App G = app_new(&gif, filename);
 
     keybinds_init();
 

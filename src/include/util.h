@@ -20,11 +20,10 @@
 #ifndef _GIFVIEW_UTIL_H
 #define _GIFVIEW_UTIL_H
 
-#include <stdio.h>
-
 #include <SDL2/SDL_log.h>
 
 
+/* TODO: Don't use SDL logging */
 #define warn(fmt, ...)  \
     (SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, (fmt), ##__VA_ARGS__))
 
@@ -36,20 +35,6 @@
     exit(EXIT_FAILURE);})
 
 
-/** Linked List node. */
-typedef struct LinkedList
-{
-    void *data;
-    struct LinkedList *next;
-} LinkedList;
-
-
-/** Allocate a new LinkedList node containing DATA. */
-LinkedList *linkedlist_new(void *data);
-
-/** Append END to the linked list pointed to by HEAD. */
-void linkedlist_append(LinkedList **head, LinkedList *end);
-
 /**
  * Error-checked fread.  If an error occurs, prints the error message and dies.
  * If EOF is hit, prints a warning.
@@ -60,6 +45,9 @@ size_t efread(void *restrict ptr, size_t size, size_t n, FILE *restrict stream);
  * Concatenate two strings, returning the result in a newly-allocated string.
  */
 char *estrcat(char const *prefix, char const *suffix);
+
+/** Like sprintf, but mallocs a new string in STR. */
+int sprintfa(char **restrict str, char const *restrict fmt, ...);
 
 
 #endif /* _GIFVIEW_UTIL_H */

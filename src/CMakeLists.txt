@@ -1,4 +1,5 @@
 
+# Use fontconfig to get path to default font
 exec_program(fc-match ARGS --format=%{file} OUTPUT_VARIABLE DEFAULT_FONT_PATH)
 
 configure_file(config.h.in "${PROJECT_BINARY_DIR}/include/config.h")
@@ -11,10 +12,9 @@ target_sources(gifview PRIVATE
     keybinds.c
     sdlapp.c
     sdlgif.c
-    util.c
 )
 
-add_subdirectory(gif)
+add_subdirectory(include)
 add_subdirectory(viewer)
 
-target_link_libraries(gifview PRIVATE gif viewer)
+target_link_libraries(gifview PRIVATE gif linkedlist util viewer)
