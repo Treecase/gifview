@@ -136,7 +136,7 @@ SDL_Surface *_make_frame(LinkedList const **start, SDL_Surface **nextframe, GIF 
 
     /* Step through graphics until we find a graphic with a nonzero delay time,
      * which marks the start of a new frame. */
-    for (; *start != NULL; *start = (*start)->next)
+    for (; (*start)->next != NULL; *start = (*start)->next)
     {
         struct GIF_Graphic const *const graphic = (*start)->data;
         /* TODO: PlainText graphics are skipped for now. */
@@ -146,6 +146,13 @@ SDL_Surface *_make_frame(LinkedList const **start, SDL_Surface **nextframe, GIF 
         linkedlist_append(&surfacegraphics, linkedlist_new(g));
         if (graphic->extension && graphic->extension->delay_time != 0)
             break;
+    }
+    struct GIF_Graphic const *const graphic = (*start)->data;
+    /* TODO: PlainText graphics are skipped for now. */
+    if (graphic->is_img)
+    {
+        struct SurfaceGraphic *g = surfacegraphic_from_graphic(graphic);
+        linkedlist_append(&surfacegraphics, linkedlist_new(g));
     }
 
     /* Create the current frame, copying over data from the previous frame. */
