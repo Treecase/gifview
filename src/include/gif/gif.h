@@ -1,5 +1,5 @@
 /*
- * gif.h -- GIF reading declarations.
+ * gif.h -- GIF functions and struct.
  *
  * Copyright (C) 2022 Trevor Last
  *
@@ -17,8 +17,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef _GIFVIEW_GIF_H
-#define _GIFVIEW_GIF_H
+#ifndef GIFVIEW_GIF_H
+#define GIFVIEW_GIF_H
 
 #include "linkedlist/linkedlist.h"
 
@@ -57,7 +57,10 @@ struct GIF_Image
     /** Whether the image is interlaced or not. */
     bool interlace_flag;
 
-    /** Image's local color table, or NULL if using global table. */
+    /**
+     * Image's local color table, or the global color table if the image
+     * doesn't have a local one.
+     */
     struct GIF_ColorTable *color_table;
 
     /** Size of PIXELS in bytes. */
@@ -72,11 +75,13 @@ struct GIF_GraphicExt
     /** Graphic disposal method. */
     enum DisposalMethod
     {
-        GIF_DisposalMethod_Undefined,
-        GIF_DisposalMethod_None,
-        GIF_DisposalMethod_DoNotDispose,
-        GIF_DisposalMethod_RestoreBackground,
-        GIF_DisposalMethod_RestorePrevious,
+        /* Using 8 as undefined value because valid disposal method range is
+         * 3 bits (ie. 0-7) */
+        GIF_DisposalMethod_Undefined = 8,
+        GIF_DisposalMethod_None = 0,
+        GIF_DisposalMethod_DoNotDispose = 1,
+        GIF_DisposalMethod_RestoreBackground = 2,
+        GIF_DisposalMethod_RestorePrevious = 3,
     } disposal_method;
     /** Whether user input is needed to continue. */
     bool user_input_flag;
@@ -168,4 +173,4 @@ GIF gif_from_file(char const *filename);
 void gif_free(GIF gif);
 
 
-#endif /* _GIFVIEW_GIF_H */
+#endif /* GIFVIEW_GIF_H */
