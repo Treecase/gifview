@@ -17,8 +17,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef _GIFVIEW_SDLAPP_H
-#define _GIFVIEW_SDLAPP_H
+#ifndef GIFVIEW_SDLAPP_H
+#define GIFVIEW_SDLAPP_H
 
 #include "sdlgif.h"
 #include "fontrenderer.h"
@@ -85,4 +85,4 @@ void app_set_looping(struct App *app, bool looping);
 void app_set_playback_speed(struct App *app, double playback_speed);
 
 
-#endif /* _GIFVIEW_SDLAPP_H */
+#endif /* GIFVIEW_SDLAPP_H */

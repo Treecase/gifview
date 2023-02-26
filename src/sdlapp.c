@@ -35,9 +35,10 @@ static uint8_t const BACKGROUND_GRID_COLOR_A[3] = {0x64, 0x64, 0x64};
 static uint8_t const BACKGROUND_GRID_COLOR_B[3] = {0x90, 0x90, 0x90};
 
 
+/** Get transformed rect for the current frame. */
 SDL_Rect _get_current_frame_rect(struct App const *app)
 {
-    struct Graphic const *const img = app->current_frame->data;
+    struct SDLGraphic const *const img = app->current_frame->data;
     int const img_scaled_h = img->height * app->view.transform.zoom;
     int const img_scaled_w = img->width * app->view.transform.zoom;
     SDL_Rect rect;
@@ -91,6 +92,24 @@ bool _is_app_on_final_frame(struct App const *app)
     return app->current_frame->next == app->images;
 }
 
+/** Draw app overlay text. */
+void _draw_text_overlay(struct App const *app)
+{
+    SDL_Rect moved_looping_rect = app->looping_text->rect;
+    moved_looping_rect.y += app->paused_text->rect.h;
+    SDL_Rect moved_playback_speed_rect = app->playback_speed_text->rect;
+    moved_playback_speed_rect.y += moved_looping_rect.y + moved_looping_rect.h;
+    SDL_RenderCopy(
+        app->renderer, app->paused_text->texture,
+        NULL, &app->paused_text->rect);
+    SDL_RenderCopy(
+        app->renderer, app->looping_text->texture,
+        NULL, &moved_looping_rect);
+    SDL_RenderCopy(
+        app->renderer, app->playback_speed_text->texture,
+        NULL, &moved_playback_speed_rect);
+}
+
 
 struct App app_new(GIF const *gif, char const *path)
 {
@@ -141,13 +160,13 @@ struct App app_new(GIF const *gif, char const *path)
     app.view.transform.offset_y = 0;
     app.view.transform.zoom = 1.0;
 
-    app.images = graphiclist_new(app.renderer, *gif);
+    app.images = graphiclist_new_from_gif(app.renderer, *gif);
     app.current_frame = app.images;
     app.timer = 0;
     app.full_time = 0;
     for (GraphicList curr = app.images; curr->next != app.images; curr = curr->next)
     {
-        struct Graphic const *const img = curr->data;
+        struct SDLGraphic const *const img = curr->data;
         app.full_time += img->delay;
     }
     app_set_paused(&app, false);
@@ -180,7 +199,7 @@ bool app_timer_increment(struct App *app)
     bool advanced = false;
     app->timer = fmod(app->timer + app->view.playback_speed, app->full_time);
     for (
-        struct Graphic const *image = app->current_frame->data;
+        struct SDLGraphic const *image = app->current_frame->data;
         app->timer >= image->delay;
         image = app->current_frame->data)
     {
@@ -197,7 +216,7 @@ bool app_timer_increment(struct App *app)
 
 void app_next_frame(struct App *app)
 {
-    struct Graphic const *const image = app->current_frame->data;
+    struct SDLGraphic const *const image = app->current_frame->data;
     app->timer -= image->delay;
     app->current_frame = app->current_frame->next;
 }
@@ -213,25 +232,11 @@ void app_previous_frame(struct App *app)
 
 void app_draw(struct App *app)
 {
-    struct Graphic const *const img = app->current_frame->data;
+    struct SDLGraphic const *const img = app->current_frame->data;
     SDL_Rect const position = _get_current_frame_rect(app);
     SDL_RenderCopy(app->renderer, img->texture, NULL, &position);
     if (app->state_text_visible)
-    {
-        SDL_Rect moved_looping_rect = app->looping_text->rect;
-        moved_looping_rect.y += app->paused_text->rect.h;
-        SDL_Rect moved_playback_speed_rect = app->playback_speed_text->rect;
-        moved_playback_speed_rect.y += moved_looping_rect.y + moved_looping_rect.h;
-        SDL_RenderCopy(
-            app->renderer, app->paused_text->texture,
-            NULL, &app->paused_text->rect);
-        SDL_RenderCopy(
-            app->renderer, app->looping_text->texture,
-            NULL, &moved_looping_rect);
-        SDL_RenderCopy(
-            app->renderer, app->playback_speed_text->texture,
-            NULL, &moved_playback_speed_rect);
-    }
+        _draw_text_overlay(app);
     SDL_RenderPresent(app->renderer);
 }
 

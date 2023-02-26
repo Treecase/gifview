@@ -17,8 +17,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef _GIFVIEW_SDLGIF_H
-#define _GIFVIEW_SDLGIF_H
+#ifndef GIFVIEW_SDLGIF_H
+#define GIFVIEW_SDLGIF_H
 
 #include "util.h"
 #include "gif/gif.h"
@@ -27,7 +27,7 @@
 
 
 /** SDL data for a GIF graphic.  Represents a complete frame of a GIF. */
-struct Graphic
+struct SDLGraphic
 {
     SDL_Texture *texture;
     int width, height;
@@ -35,15 +35,15 @@ struct Graphic
 };
 
 
-/** Pointer to LinkedList of Graphics. */
+/** LinkedList<SDLGraphic>. */
 typedef LinkedList *GraphicList;
 
 
 /** Generate a linked list of Graphics from a linked list of GIF_Graphics. */
-GraphicList graphiclist_new(SDL_Renderer *renderer, GIF gif);
+GraphicList graphiclist_new_from_gif(SDL_Renderer *renderer, GIF gif);
 
 /** Free a linked list of Graphics. */
 void graphiclist_free(GraphicList graphics);
 
 
-#endif /* _GIFVIEW_SDLGIF_H */
+#endif /* GIFVIEW_SDLGIF_H */

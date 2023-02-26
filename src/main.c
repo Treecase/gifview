@@ -206,13 +206,11 @@ int MAIN(int argc, char *argv[])
 
     keybinds_init();
 
-    /* Start the frame update timer. */
-    SDL_TimerID timer = SDL_AddTimer(10, timer_callback, NULL);
+    SDL_TimerID frame_update_timer = SDL_AddTimer(10, timer_callback, NULL);
 
     bool screen_dirty = true;
     while (G.view.running)
     {
-        /* Redraw the screen if dirty. */
         if (screen_dirty)
         {
             imagetransform_clamp(
@@ -230,6 +228,7 @@ int MAIN(int argc, char *argv[])
             viewer_quit(&G.view);
             break;
 
+        // User events are pushed by the frame update timer callback.
         case SDL_USEREVENT:
             if (app_timer_increment(&G))
                 screen_dirty = true;
@@ -274,7 +273,7 @@ int MAIN(int argc, char *argv[])
         }
     }
 
-    SDL_RemoveTimer(timer);
+    SDL_RemoveTimer(frame_update_timer);
     app_free(&G);
     TTF_Quit();
     SDL_Quit();

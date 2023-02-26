@@ -22,7 +22,7 @@
 
 /**
  * Interstitial structure used to construct the full frames contained in the
- * Graphic struct.  SDL representation of a GIF_Graphic.
+ * SDLGraphic struct.  SDL representation of a GIF_Graphic.
  */
 struct SurfaceGraphic
 {
@@ -112,15 +112,22 @@ void surfacegraphic_free(struct SurfaceGraphic *sg)
 }
 
 
-/** Create a new Graphic. */
-struct Graphic *graphic_new(void)
+/** Allocate a new SDLGraphic. */
+struct SDLGraphic *graphic_new(void)
 {
-    struct Graphic *graphic = malloc(sizeof(struct Graphic));
+    struct SDLGraphic *graphic = malloc(sizeof(struct SDLGraphic));
     graphic->delay = 0;
     graphic->width = 0;
     graphic->height = 0;
     graphic->texture = NULL;
     return graphic;
+}
+
+/** Free an SDLGraphic. */
+void graphic_free(struct SDLGraphic *graphic)
+{
+    SDL_DestroyTexture(graphic->texture);
+    free(graphic);
 }
 
 
@@ -215,21 +222,19 @@ SDL_Surface *_make_frame(LinkedList const **start, SDL_Surface **nextframe, GIF 
     return frame;
 }
 
-GraphicList graphiclist_new(SDL_Renderer *renderer, GIF gif)
+GraphicList graphiclist_new_from_gif(SDL_Renderer *renderer, GIF gif)
 {
     SDL_Surface *lastframe = SDL_CreateRGBSurfaceWithFormat(
         0, gif.width, gif.height, 32, SDL_PIXELFORMAT_RGBA32);
     SDL_FillRect(lastframe, NULL, SDL_MapRGBA(lastframe->format, 0, 0, 0, 0));
 
     GraphicList out = NULL;
-
-    LinkedList const *node = gif.graphics;
-    while (node)
+    for (LinkedList const *node = gif.graphics; node; node = node->next)
     {
         SDL_Surface *frame = _make_frame(&node, &lastframe, &gif);
 
         struct GIF_Graphic *g = node->data;
-        struct Graphic *frame_g = graphic_new();
+        struct SDLGraphic *frame_g = graphic_new();
         frame_g->delay = g->extension? g->extension->delay_time : 0;
         frame_g->width = frame->w;
         frame_g->height = frame->h;
@@ -238,7 +243,6 @@ GraphicList graphiclist_new(SDL_Renderer *renderer, GIF gif)
         SDL_FreeSurface(frame);
 
         linkedlist_append(&out, linkedlist_new(frame_g));
-        node = node->next;
     }
 
     /* Make the list circular, for free looping. */
@@ -258,9 +262,7 @@ void graphiclist_free(GraphicList graphics)
 {
     for (GraphicList node = graphics->next; node != NULL;)
     {
-        struct Graphic *graphic = node->data;
-        SDL_DestroyTexture(graphic->texture);
-        free(graphic);
+        graphic_free(node->data);
         GraphicList next = node->next;
         free(node);
         if (node == graphics)
