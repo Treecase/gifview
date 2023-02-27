@@ -17,8 +17,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef _GIFVIEW_KEYBINDS_H
-#define _GIFVIEW_KEYBINDS_H
+#ifndef GIFVIEW_KEYBINDS_H
+#define GIFVIEW_KEYBINDS_H
 
 #include "util.h"
 
@@ -57,4 +57,4 @@ void action_set_keybinds(
 bool action_ispressed(struct Action action, SDL_Keysym event);
 
 
-#endif /* _GIFVIEW_KEYBINDS_H */
+#endif /* GIFVIEW_KEYBINDS_H */

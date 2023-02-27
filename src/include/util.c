@@ -50,6 +50,28 @@ char *estrcat(char const *prefix, char const *suffix)
     return out;
 }
 
+char *estrdup(char const *s)
+{
+    if (!s)
+        return NULL;
+    return estrndup(s, strlen(s));
+}
+
+char *estrndup(char const *s, size_t n)
+{
+    if (!s)
+        return NULL;
+    char *out = malloc(n + 1);
+    if (!out)
+    {
+        errno = ENOMEM;
+        return NULL;
+    }
+    memcpy(out, s, n);
+    out[n] = '\0';
+    return out;
+}
+
 int sprintfa(char **restrict str, char const *restrict fmt, ...)
 {
     va_list ap, ap2;

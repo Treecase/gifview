@@ -17,8 +17,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef _GIFVIEW_UTIL_H
-#define _GIFVIEW_UTIL_H
+#ifndef GIFVIEW_UTIL_H
+#define GIFVIEW_UTIL_H
 
 #include <SDL2/SDL_log.h>
 
@@ -46,8 +46,14 @@ size_t efread(void *restrict ptr, size_t size, size_t n, FILE *restrict stream);
  */
 char *estrcat(char const *prefix, char const *suffix);
 
+/** Duplicate S into a newly-allocated string. */
+char *estrdup(char const *s);
+
+/** Duplicate at most N bytes of S into a newly-allocated string. */
+char *estrndup(char const *s, size_t n);
+
 /** Like sprintf, but mallocs a new string in STR. */
 int sprintfa(char **restrict str, char const *restrict fmt, ...);
 
 
-#endif /* _GIFVIEW_UTIL_H */
+#endif /* GIFVIEW_UTIL_H */

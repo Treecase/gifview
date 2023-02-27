@@ -21,7 +21,7 @@
 #include "config.h"
 #include "util.h"
 
-#include <stdbool.h>
+#include <string.h>
 
 
 extern struct Action actions[];
@@ -34,11 +34,7 @@ extern size_t actions_count;
 
 /** Path to the global key config file. */
 static char const *const GLOBAL_KEYCONF_PATH =\
-    GIFVIEW_GLOBAL_CONFIG_DIR "/keys.conf";
-
-/** Path to the local key config file (starting from $HOME). */
-static char const *const LOCAL_KEYCONF_PATH =\
-    GIFVIEW_LOCAL_CONFIG_DIR "/keys.conf";
+    GIFVIEW_GLOBAL_CONFIG_ROOT GIFVIEW_CONFIG_DIR "/keys.conf";
 
 /** Helper struct used only for default_keybinds array. */
 struct KeyDef
@@ -181,7 +177,7 @@ int read_key(struct Parser *p, char **key)
         while (p->i < p->length && !isspace(p->line[p->i++]))
             ;
     }
-    *key = strndup(p->line+tok_start, p->i-tok_start-1);
+    *key = estrndup(p->line+tok_start, p->i-tok_start-1);
     return err;
 }
 
@@ -219,7 +215,7 @@ void parse_keyconf(FILE *file)
         ssize_t tok_start = p.i;
         while (p.i < p.length && !isspace(p.line[p.i++]))
             ;
-        char *action_name = strndup(p.line+tok_start, p.i-tok_start-1);
+        char *action_name = estrndup(p.line+tok_start, p.i-tok_start-1);
         struct Action *action = NULL;
         if (parse_action(action_name, &action))
         {
@@ -330,6 +326,25 @@ void parse_keyconf(FILE *file)
     free(p.line);
 }
 
+/**
+ * Try to load the keys.conf file under PATH/gifview/.  Return true if
+ * successful, false otherwise.
+ */
+bool load_keysconf_at(char const *path)
+{
+    bool success = false;
+    char *confpath = estrcat(path, GIFVIEW_CONFIG_DIR"/keys.conf");
+    FILE *keysconf = fopen(confpath, "r");
+    if (keysconf)
+    {
+        parse_keyconf(keysconf);
+        fclose(keysconf);
+        success = true;
+    }
+    free(confpath);
+    return success;
+}
+
 /** Return true if BIND matches EVENT. */
 bool keybind_ispressed(struct KeyBind const *bind, SDL_Keysym event)
 {
@@ -400,26 +415,19 @@ void keybinds_init(void)
     }
 
     /* Start with global config... */
-    FILE *conf = fopen(GLOBAL_KEYCONF_PATH, "r");
-    if (conf)
-    {
-        parse_keyconf(conf);
-        fclose(conf);
-    }
+    load_keysconf_at(GIFVIEW_GLOBAL_CONFIG_ROOT);
 
-    /* ..And now the local config. */
-    char const *home = getenv("HOME");
-    if (home)
+    /* ...And then the local config. */
+    char *localconfig = estrdup(getenv("XDG_CONFIG_HOME"));
+    if (!localconfig)
     {
-        char *confpath = estrcat(home, LOCAL_KEYCONF_PATH);
-        conf = fopen(confpath, "r");
-        if (conf)
-        {
-            parse_keyconf(conf);
-            fclose(conf);
-        }
-        free(confpath);
+        char const *home = getenv("HOME");
+        if (home)
+            localconfig = estrcat(home, "/.config");
     }
+    if (localconfig)
+        load_keysconf_at(localconfig);
+    free(localconfig);
 }
 
 void action_set_keybinds(

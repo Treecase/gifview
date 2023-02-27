@@ -8,7 +8,7 @@ endif()
 
 
 project(GIFView
-    VERSION 0.3.1
+    VERSION 0.4.0
     DESCRIPTION "GIF viewer in the style of feh."
     LANGUAGES C
 )
