@@ -20,7 +20,14 @@
 #ifndef GIFVIEW_UTIL_H
 #define GIFVIEW_UTIL_H
 
-#include <SDL2/SDL_log.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <SDL_log.h>
+
+#if _WIN32
+typedef long long ssize_t;
+#endif
 
 
 /* TODO: Don't use SDL logging */
@@ -30,9 +37,9 @@
 #define error(fmt, ...) \
     (SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, (fmt), ##__VA_ARGS__))
 
-#define fatal(fmt, ...) ({\
+#define fatal(fmt, ...) {\
     SDL_LogCritical(SDL_LOG_CATEGORY_APPLICATION, (fmt), ##__VA_ARGS__);\
-    exit(EXIT_FAILURE);})
+    exit(EXIT_FAILURE);}
 
 
 /**
@@ -40,6 +47,9 @@
  * If EOF is hit, prints a warning.
  */
 size_t efread(void *restrict ptr, size_t size, size_t n, FILE *restrict stream);
+
+/** Read a line. */
+ssize_t egetline(char **restrict lineptr, size_t *restrict n, FILE *restrict stream);
 
 /**
  * Concatenate two strings, returning the result in a newly-allocated string.

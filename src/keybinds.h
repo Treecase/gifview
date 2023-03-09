@@ -24,7 +24,7 @@
 
 #include <stdbool.h>
 
-#include <SDL2/SDL_keyboard.h>
+#include <SDL_keyboard.h>
 
 
 /** Keybind data. */

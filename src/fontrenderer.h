@@ -20,7 +20,7 @@
 #ifndef _GIFVIEW_FONTRENDERER_H
 #define _GIFVIEW_FONTRENDERER_H
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <SDL_ttf.h>
 
 

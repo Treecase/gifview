@@ -23,7 +23,7 @@
 #include "util.h"
 #include "gif/gif.h"
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 
 /** SDL data for a GIF graphic.  Represents a complete frame of a GIF. */

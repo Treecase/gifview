@@ -98,7 +98,7 @@ size_t unlzw(size_t min_code_size, uint8_t const *in, uint8_t **out)
 {
     /* GIF has a maximum code size of 12 bits, the maximum code table size is
      * 2^12 = 4096 codes. */
-    size_t const table_size = 4096;
+#define table_size  4096
     struct String table[table_size];
 
     /* Since GIF LZW has a clear code and end-of-input, the code size starts

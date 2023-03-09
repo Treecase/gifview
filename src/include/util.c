@@ -39,6 +39,48 @@ size_t efread(void *restrict ptr, size_t size, size_t n, FILE *restrict stream)
     return value;
 }
 
+ssize_t egetline(char **restrict lineptr, size_t *restrict n, FILE *restrict stream)
+{
+#define FAIL(err) { errno = (err); return -1; }
+
+    if (lineptr == NULL || n == NULL || stream == NULL)
+        FAIL(EINVAL);
+    if (*lineptr == NULL)
+    {
+        *n = 32;
+        *lineptr = malloc(*n);
+        if (!*lineptr)
+            FAIL(ENOMEM);
+    }
+
+    ssize_t chars_read = 0;
+
+    int ch;
+    while ((ch = fgetc(stream)) != EOF)
+    {
+        if (chars_read + 1 >= *n)
+        {
+            if (*n == 0)
+                *n = 32;
+            else
+                *n *= 2;
+            *lineptr = realloc(*lineptr, *n);
+            if (!*lineptr)
+                FAIL(ENOMEM);
+        }
+        (*lineptr)[chars_read++] = ch;
+        if (ch == '\n')
+        {
+            (*lineptr)[chars_read] = '\0';
+            return chars_read;
+        }
+    }
+
+    // Only reached on EOF.
+    return -1;
+#undef FAIL
+}
+
 char *estrcat(char const *prefix, char const *suffix)
 {
     size_t prefix_len = strlen(prefix),

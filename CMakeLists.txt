@@ -24,7 +24,14 @@ add_executable(gifview)
 target_compile_features(gifview PRIVATE c_std_99)
 set_target_properties(gifview PROPERTIES C_EXTENSIONS OFF)
 target_include_directories(gifview PRIVATE "${PROJECT_BINARY_DIR}/include")
-target_link_libraries(gifview PRIVATE SDL2::SDL2 SDL2_ttf::SDL2_ttf m)
+if(NOT MSVC)
+    target_link_libraries(gifview PRIVATE m)
+endif()
+target_link_libraries(gifview PRIVATE
+    SDL2::SDL2main
+    SDL2::SDL2
+    SDL2_ttf::SDL2_ttf
+)
 
 
 # Compile subdirs

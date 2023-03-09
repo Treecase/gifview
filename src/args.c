@@ -24,7 +24,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#if !_WIN32
 #include <getopt.h>
+#endif
 
 
 void usage(char const *name, bool print_long)
@@ -60,6 +62,7 @@ There is NO WARRANTY, to the extent permitted by law.\
 
 char const *parse_args(int argc, char *argv[])
 {
+#if !_WIN32
     static char const *const short_options = "";
     static struct option const long_options[] = {
         {"help",    no_argument, NULL, 0},
@@ -119,4 +122,6 @@ char const *parse_args(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
     return argv[optind];
+#endif
+    return argv[1];
 }

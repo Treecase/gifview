@@ -32,7 +32,6 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdnoreturn.h>
 #include <string.h>
 
 
@@ -112,7 +111,7 @@ static ParseState const
 
 /* ===[ Parser Methods ]=== */
 /** Print parser error message and exit. */
-noreturn void parser_error(
+void parser_error(
     Parser const *restrict p, char const *restrict fmt, ...)
 {
     va_list ap;

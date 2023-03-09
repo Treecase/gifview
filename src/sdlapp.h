@@ -24,7 +24,7 @@
 #include "fontrenderer.h"
 #include "viewer/viewer.h"
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 
 /**
