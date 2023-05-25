@@ -3,13 +3,13 @@
  *
  * Note that this parser implements a relaxed verison of the GIF 89a standard.
  * Firstly, the version number does not affect loading, so blocks added in 89a
- * can appear in an 87a versioned file.  Second, other blocks can appear between
- * a graphic control extension and the associated image, contrary to the BNF
- * grammar given in the spec.  This is intentional, done to handle real-world
- * data created with similarly lax encoders.
+ * can appear in an 87a versioned file.  Second, other blocks (including other
+ * GCEs!) can appear between a graphic control extension and the associated
+ * image, contrary to the BNF grammar given in the spec.  This is intentional,
+ * done to handle real-world data created with similarly lax encoders.
  *
  *
- * Copyright (C) 2022 Trevor Last
+ * Copyright (C) 2022-2023 Trevor Last
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -54,19 +54,14 @@ typedef struct ParseState
  * GIF Parser state machine.
  *
  * Reads characters from STREAM according to STATE, building the RESULT as it
- * goes.  PUSHED_GEXT is used to store the last encountered Graphic Control
- * Extension, as blocks can appear between it and the Graphic it controls.  It
- * is an error to set this if it is not NULL.  When 'popping' the value, it
- * must be reset to NULL.
- *
- * TODO: Probably want to enforce the aforementioned PUSHED_GEXT contract
- * through methods!
+ * goes.  GEXT_STACK is used to store Graphic Control Extensions, as other
+ * blocks can appear between them and the Graphic they control.
  */
 typedef struct Parser
 {
     FILE *stream;
     ParseState state;
-    struct GIF_GraphicExt *pushed_gext;
+    LinkedList *gext_stack;
     GIF result;
 } Parser;
 
@@ -125,6 +120,21 @@ noreturn void parser_error(
     exit(EXIT_FAILURE);
 }
 
+/** Free memory allocated to P. */
+void parser_free(Parser *p)
+{
+    LinkedList *node = p->gext_stack;
+    while (node)
+    {
+        LinkedList *next = node->next;
+        free(node->data);
+        free(node);
+        node = next;
+    }
+    if (node != NULL)
+        parser_error(p, "Unused Graphic Extensions!");
+}
+
 /** Read a byte from P's stream and return it. */
 uint8_t parser_next(Parser *p)
 {
@@ -145,6 +155,38 @@ uint8_t parser_peek(Parser *p)
 void parser_read(Parser *restrict p, void *restrict out, size_t n)
 {
     efread(out, 1, n, p->stream);
+}
+
+/** Push a Graphic Control Extension onto P's GCE stack. */
+void parser_push_gext(Parser *restrict p, struct GIF_GraphicExt *restrict gext)
+{
+    linkedlist_append(&p->gext_stack, linkedlist_new(gext));
+}
+
+/**
+ * Pop a Graphic Control Extension from P's GCE stack.  Returns NULL if the
+ * stack is empty.
+ */
+struct GIF_GraphicExt *parser_pop_gext(Parser *p)
+{
+    if (p->gext_stack == NULL)
+        return NULL;
+    if (p->gext_stack->next == NULL)
+    {
+        struct GIF_GraphicExt *gext = p->gext_stack->data;
+        free(p->gext_stack);
+        p->gext_stack = NULL;
+        return gext;
+    }
+
+    LinkedList *node = p->gext_stack;
+    while (node->next->next)
+        node = node->next;
+
+    struct GIF_GraphicExt *gext = node->next->data;
+    free(node->next);
+    node->next = NULL;
+    return gext;
 }
 
 
@@ -177,12 +219,7 @@ void add_graphic_control_extension(Parser *p, struct GenericExtension ext)
     gext->transparent_color_flag = fields & 1;
     gext->user_input_flag = (fields >> 1) & 1;
     gext->disposal_method = (fields >> 2) & 7;
-    if (p->pushed_gext)
-    {
-        parser_error(
-            p, "Graphic Control Extension appears without a matching graphic");
-    }
-    p->pushed_gext = gext;
+    parser_push_gext(p, gext);
 }
 
 void add_plain_text_extension(Parser *p, struct GenericExtension ext)
@@ -200,10 +237,9 @@ void add_plain_text_extension(Parser *p, struct GenericExtension ext)
     ptext.data = malloc(ptext.data_size);
     memcpy(ptext.data, ext.data + 12, ptext.data_size);
     struct GIF_Graphic *graphic = malloc(sizeof(*graphic));
-    graphic->extension = p->pushed_gext;
+    graphic->extension = parser_pop_gext(p);
     graphic->is_img = false;
     graphic->plaintext = ptext;
-    p->pushed_gext = NULL;
     linkedlist_append(&p->result.graphics, linkedlist_new(graphic));
 }
 
@@ -389,10 +425,9 @@ ParseState state_image(Parser *p)
     _state_image_data(p, &image);
 
     struct GIF_Graphic *graphic = malloc(sizeof(*graphic));
-    graphic->extension = p->pushed_gext;
+    graphic->extension = parser_pop_gext(p);
     graphic->is_img = true;
     graphic->img = image;
-    p->pushed_gext = NULL;
     linkedlist_append(&p->result.graphics, linkedlist_new(graphic));
 
     return STATE_DATA;
@@ -473,7 +508,7 @@ GIF gif_from_file(char const *filename)
     if (file == NULL)
         fatal("fopen: %s\n", strerror(errno));
 
-    Parser p = {.stream = file, .state = STATE_HEADER, .pushed_gext=NULL};
+    Parser p = {.stream = file, .state = STATE_HEADER, .gext_stack=NULL};
     while (p.state.fn)
         p.state = p.state.fn(&p);
 
@@ -481,5 +516,6 @@ GIF gif_from_file(char const *filename)
     if (fclose(file))
         fatal("fclose: %s\n", strerror(errno));
 
+    parser_free(&p);
     return p.result;
 }
