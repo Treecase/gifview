@@ -1,7 +1,7 @@
 /*
  * keybinds.c -- Keybindings definitions.
  *
- * Copyright (C) 2022 Trevor Last
+ * Copyright (C) 2022-2023 Trevor Last
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -253,6 +253,7 @@ void parse_keyconf(FILE *file)
         if (p.i >= p.length)
         {
             action_set_keybinds(action, k1, UNBOUND, UNBOUND);
+            free(key1);
             continue;
         }
         free(key1);

@@ -1,7 +1,7 @@
 /*
  * sdlapp.c -- App struct.
  *
- * Copyright (C) 2022 Trevor Last
+ * Copyright (C) 2022-2023 Trevor Last
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -182,6 +182,8 @@ void app_free(struct App const *app)
 {
     graphiclist_free(app->images);
     textrenderer_free(app->paused_text);
+    textrenderer_free(app->looping_text);
+    textrenderer_free(app->playback_speed_text);
     SDL_DestroyTexture(app->bg_texture);
     SDL_DestroyRenderer(app->renderer);
     SDL_DestroyWindow(app->window);

@@ -263,6 +263,7 @@ void add_extension(Parser *p, struct GenericExtension ext)
         parser_error(p, "Invalid extension label 0x%.2hhx", ext.label);
         break;
     }
+    free(ext.data);
 }
 
 
