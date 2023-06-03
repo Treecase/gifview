@@ -17,8 +17,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef _GIFVIEW_IMAGETRANSFORM_H
-#define _GIFVIEW_IMAGETRANSFORM_H
+#ifndef GIFVIEW_IMAGETRANSFORM_H
+#define GIFVIEW_IMAGETRANSFORM_H
 
 
 /** How to draw the image (scaling, offsets). */
@@ -39,4 +39,4 @@ void imagetransform_clamp(
     int max_x, int max_y);
 
 
-#endif /* _GIFVIEW_IMAGETRANSFORM_H */
+#endif /* GIFVIEW_IMAGETRANSFORM_H */

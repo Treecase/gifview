@@ -17,8 +17,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef _GIFVIEW_FONTRENDERER_H
-#define _GIFVIEW_FONTRENDERER_H
+#ifndef GIFVIEW_FONTRENDERER_H
+#define GIFVIEW_FONTRENDERER_H
 
 #include <SDL2/SDL.h>
 #include <SDL_ttf.h>
@@ -45,4 +45,4 @@ void textrenderer_set_text(
     struct TextRenderer *text, SDL_Renderer *renderer, char const *utf8text);
 
 
-#endif /* _GIFVIEW_FONTRENDERER_H */
+#endif /* GIFVIEW_FONTRENDERER_H */

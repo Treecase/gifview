@@ -17,8 +17,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef _GIFVIEW_ARGS_H
-#define _GIFVIEW_ARGS_H
+#ifndef GIFVIEW_ARGS_H
+#define GIFVIEW_ARGS_H
 
 #include <stdbool.h>
 
@@ -33,4 +33,4 @@ void version(void);
 char const *parse_args(int argc, char *argv[]);
 
 
-#endif /* _GIFVIEW_ARGS_H */
+#endif /* GIFVIEW_ARGS_H */

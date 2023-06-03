@@ -17,8 +17,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef _GIFVIEW_VIEWER_H
-#define _GIFVIEW_VIEWER_H
+#ifndef GIFVIEW_VIEWER_H
+#define GIFVIEW_VIEWER_H
 
 #include "imagetransform.h"
 
@@ -83,4 +83,4 @@ void viewer_quit(struct Viewer *v);
 bool viewer_should_timer_increment(struct Viewer *v);
 
 
-#endif /* _GIFVIEW_VIEWER_H */
+#endif /* GIFVIEW_VIEWER_H */

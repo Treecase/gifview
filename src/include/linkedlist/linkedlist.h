@@ -17,8 +17,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef _GIFVIEW_LINKEDLIST_H
-#define _GIFVIEW_LINKEDLIST_H
+#ifndef GIFVIEW_LINKEDLIST_H
+#define GIFVIEW_LINKEDLIST_H
 
 
 /** Linked List node. */
@@ -36,4 +36,4 @@ LinkedList *linkedlist_new(void *data);
 void linkedlist_append(LinkedList **head, LinkedList *end);
 
 
-#endif /* _GIFVIEW_LINKEDLIST_H */
+#endif /* GIFVIEW_LINKEDLIST_H */

@@ -17,8 +17,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef _GIFVIEW_LZW_H
-#define _GIFVIEW_LZW_H
+#ifndef GIFVIEW_LZW_H
+#define GIFVIEW_LZW_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -31,4 +31,4 @@
 size_t unlzw(size_t min_code_size, uint8_t const *in, uint8_t **out);
 
 
-#endif /* _GIFVIEW_LZW_H */
+#endif /* GIFVIEW_LZW_H */
