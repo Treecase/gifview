@@ -174,6 +174,8 @@ struct App app_new(GIF const *gif, char const *path)
     app_set_playback_speed(&app, 1.0);
     app.state_text_visible = false;
 
+    app.is_fullscreen = false;
+
     _generate_bg_grid(&app);
     return app;
 }
@@ -191,7 +193,13 @@ void app_free(struct App const *app)
 
 void app_clear_screen(struct App *app)
 {
-    SDL_RenderCopy(app->renderer, app->bg_texture, NULL, NULL);
+    if (app->is_fullscreen)
+    {
+        SDL_SetRenderDrawColor(app->renderer, 0, 0, 0, 0xFF);
+        SDL_RenderFillRect(app->renderer, NULL);
+    }
+    else
+        SDL_RenderCopy(app->renderer, app->bg_texture, NULL, NULL);
 }
 
 bool app_timer_increment(struct App *app)
@@ -275,4 +283,13 @@ void app_set_playback_speed(struct App *app, double playback_speed)
     sprintfa(&str, "Playback Speed %#g", app->view.playback_speed);
     textrenderer_set_text(app->playback_speed_text, app->renderer, str);
     free(str);
+}
+
+void app_set_fullscreen(struct App *app, bool value)
+{
+    app->is_fullscreen = value;
+    if (value)
+        SDL_SetWindowFullscreen(app->window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+    else
+        SDL_SetWindowFullscreen(app->window, 0);
 }

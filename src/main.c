@@ -2,7 +2,7 @@
  * gifview - A GIF file viewer.
  * main.c -- Entry point for GIFView.
  *
- * Copyright (C) 2022 Trevor Last
+ * Copyright (C) 2022-2023 Trevor Last
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,10 +46,7 @@ void quit(struct App *G)
 }
 void fullscreen_toggle(struct App *G)
 {
-    if (SDL_GetWindowFlags(G->window) & SDL_WINDOW_FULLSCREEN_DESKTOP)
-        SDL_SetWindowFullscreen(G->window, 0);
-    else
-        SDL_SetWindowFullscreen(G->window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+    app_set_fullscreen(G, !G->is_fullscreen);
 }
 
 /* Zoom */

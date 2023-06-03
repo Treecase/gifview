@@ -1,7 +1,7 @@
 /*
  * sdlapp.h -- App struct.
  *
- * Copyright (C) 2022 Trevor Last
+ * Copyright (C) 2022-2023 Trevor Last
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,6 +45,8 @@ struct App
     double full_time;
     /** Is the state display text visible? */
     bool state_text_visible;
+    /** Is the window fullscreened? */
+    bool is_fullscreen;
 };
 
 
@@ -83,6 +85,9 @@ void app_set_looping(struct App *app, bool looping);
 
 /** Set app playback speed. */
 void app_set_playback_speed(struct App *app, double playback_speed);
+
+/** Set app fullscreen state. */
+void app_set_fullscreen(struct App *app, bool value);
 
 
 #endif /* GIFVIEW_SDLAPP_H */
