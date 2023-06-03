@@ -2,7 +2,7 @@
  * font.h -- Font configuration; CMake configures this using fontconfig to get
  * the default font path.
  *
- * Copyright (C) 2022 Trevor Last
+ * Copyright (C) 2022-2023 Trevor Last
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,12 +18,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef _GIFVIEW_FONT_H
-#define _GIFVIEW_FONT_H
+#ifndef GIFVIEW_FONT_H
+#define GIFVIEW_FONT_H
 
 
 #define DEFAULT_FONT_SIZE   14
 #define DEFAULT_FONT_PATH   "@DEFAULT_FONT_PATH@"
+#define DEFAULT_MONOSPACE_FONT_PATH "@DEFAULT_MONOSPACE_FONT_PATH@"
 
 
-#endif /* _GIFVIEW_FONT_H */
+#endif /* GIFVIEW_FONT_H */

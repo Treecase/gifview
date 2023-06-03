@@ -1,7 +1,7 @@
 /*
  * sdlgif.c -- SDL representation of GIF data.
  *
- * Copyright (C) 2022 Trevor Last
+ * Copyright (C) 2022-2023 Trevor Last
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,11 @@
  */
 
 #include "sdlgif.h"
+#include "font.h"
+
+#include <string.h>
+
+#include <SDL_ttf.h>
 
 
 /**
@@ -31,24 +36,29 @@ struct SurfaceGraphic
 };
 
 
-/** Convert a GIF_ColorTable to an SDL color table. */
-SDL_Color *_sdl_color_from_gif_colortable(struct GIF_ColorTable const *table)
+SDL_Color
+sdl_color_get_from_colortable(struct GIF_ColorTable const *table, size_t index)
 {
-    SDL_Color *colors = malloc(sizeof(SDL_Color) * table->size);
+    SDL_Color color = {.a=0xff};
+    color.r = table->colors[(3 * index) + 0];
+    color.g = table->colors[(3 * index) + 1];
+    color.b = table->colors[(3 * index) + 2];
+    return color;
+}
+
+/** Convert a GIF_ColorTable to a list of SDL_Colors. */
+SDL_Color *sdl_color_list_from_colortable(struct GIF_ColorTable const *table)
+{
+    SDL_Color *const colors = malloc(sizeof(SDL_Color) * table->size);
     for (size_t i = 0; i < table->size; ++i)
-    {
-        colors[i].r = table->colors[(3 * i) + 0];
-        colors[i].g = table->colors[(3 * i) + 1];
-        colors[i].b = table->colors[(3 * i) + 2];
-        colors[i].a = 255;
-    }
+        colors[i] = sdl_color_get_from_colortable(table, i);
     return colors;
 }
 
 /** Create a SurfaceGraphic from a GIF_Image. */
 struct SurfaceGraphic *surfacegraphic_from_image(struct GIF_Image const *image)
 {
-    struct SurfaceGraphic *out = malloc(sizeof(*out));
+    struct SurfaceGraphic *const out = malloc(sizeof(*out));
     out->rect.x = image->left;
     out->rect.y = image->top;
     out->rect.w = image->width;
@@ -62,21 +72,91 @@ struct SurfaceGraphic *surfacegraphic_from_image(struct GIF_Image const *image)
 
     if (out->surface == NULL)
     {
-        error("SDL_CreateRGBSurfaceWithFormatFrom: %s\n", SDL_GetError());
+        error("SDL_CreateRGBSurfaceWithFormatFrom -- %s\n", SDL_GetError());
         free(out);
         return NULL;
     }
+
+    struct GIF_ColorTable const *const table = image->color_table;
+    if (!table)
+    {
+        warn("surfacegraphic_from_image -- Image has no palette!\n");
+        return out;
+    }
+
+    SDL_Color *const colors = sdl_color_list_from_colortable(table);
+    int const err = SDL_SetPaletteColors(
+        out->surface->format->palette, colors, 0, table->size);
+    if (err != 0)
+        error("SDL_SetPaletteColors -- %s\n", SDL_GetError());
+    free(colors);
+
+    return out;
+}
+
+/** Fit the font to the given width/height. */
+int fit_font_to_rect(int width, int height)
+{
+    static float const POINTS_PER_INCH = 72.0f;
+
+    float hdpi, vdpi;
+    if (SDL_GetDisplayDPI(0, NULL, &hdpi, &vdpi) != 0)
+    {
+        error("SDL_GetDisplayDPI -- %s\n", SDL_GetError());
+        // we'll assume 72 dpi
+        hdpi = 72.0f;
+        vdpi = 72.0f;
+    }
+
+    float const width_inches = (float)width / hdpi;
+    float const height_inches = (float)height / vdpi;
+
+    float const h_points = width_inches * POINTS_PER_INCH;
+    float const v_points = height_inches * POINTS_PER_INCH;
+    return v_points;
+}
+
+/** Create a SurfaceGraphic from a GIF_PlainTextExt. */
+struct SurfaceGraphic *surfacegraphic_from_plaintext(
+    struct GIF_PlainTextExt const *restrict plaintext, struct GIF_ColorTable const *restrict gct)
+{
+    struct SurfaceGraphic *out = malloc(sizeof(*out));
+    out->rect.x = plaintext->tg_left;
+    out->rect.y = plaintext->tg_top;
+    out->rect.w = plaintext->tg_width;
+    out->rect.h = plaintext->tg_height;
+
+    SDL_Color fg = sdl_color_get_from_colortable(gct, plaintext->fg_idx);
+    SDL_Color bg = sdl_color_get_from_colortable(gct, plaintext->bg_idx);
+
+    int points = fit_font_to_rect(
+        plaintext->cell_width, plaintext->cell_height);
+    TTF_Font *font = TTF_OpenFont(DEFAULT_MONOSPACE_FONT_PATH, points);
+    if (!font)
+        error("TTF_OpenFont -- %s\n", TTF_GetError());
+
+    // TODO: Sometimes draws boxes, maybe need to draw characters individually?
+    char *text = strndup(plaintext->data, plaintext->data_size);
+    out->surface = TTF_RenderUTF8_Shaded_Wrapped(
+        font, plaintext->data, fg, bg, out->rect.w);
+    free(text);
+    if (!out->surface)
+        error("TTF_RenderUTF8_Shaded_Wrapped -- %s\n", TTF_GetError());
+
+    TTF_CloseFont(font);
     return out;
 }
 
 /** Create a SurfaceGraphic from a GIF_Graphic. */
-struct SurfaceGraphic *surfacegraphic_from_graphic(struct GIF_Graphic const *graphic)
+struct SurfaceGraphic *surfacegraphic_from_graphic(
+    struct GIF_Graphic const *restrict graphic,
+    struct GIF_ColorTable const *restrict gct)
 {
-    if (!graphic->is_img)
-        return NULL;
-
-    struct GIF_Image const *const image = &graphic->img;
-    struct SurfaceGraphic *out = surfacegraphic_from_image(&graphic->img);
+    struct SurfaceGraphic *out = NULL;
+    if (graphic->is_img)
+        out = surfacegraphic_from_image(&graphic->img);
+    else
+        out = surfacegraphic_from_plaintext(&graphic->plaintext, gct);
     if (!out)
         return NULL;
 
@@ -86,21 +166,6 @@ struct SurfaceGraphic *surfacegraphic_from_graphic(struct GIF_Graphic const *gra
         SDL_SetColorKey(
             out->surface, SDL_TRUE, graphic->extension->transparent_color_idx);
     }
-
-    /* SurfaceGraphic uses indexed color so we need a color table. */
-    if (!image->color_table)
-    {
-        warn("surfacegraphic_from_graphic: Image has no palette!\n");
-        return out;
-    }
-    struct GIF_ColorTable const *const table = image->color_table;
-    SDL_Color *colors = _sdl_color_from_gif_colortable(table);
-    int err = SDL_SetPaletteColors(
-        out->surface->format->palette, colors, 0, table->size);
-    if (err != 0)
-        error("SDL_SetPaletteColors -- %s\n", SDL_GetError());
-    free(colors);
-
     return out;
 }
 
@@ -146,21 +211,16 @@ SDL_Surface *_make_frame(LinkedList const **start, SDL_Surface **nextframe, GIF 
     for (; (*start)->next != NULL; *start = (*start)->next)
     {
         struct GIF_Graphic const *const graphic = (*start)->data;
-        /* TODO: PlainText graphics are skipped for now. */
-        if (!graphic->is_img)
-            continue;
-        struct SurfaceGraphic *g = surfacegraphic_from_graphic(graphic);
+        struct SurfaceGraphic *g = surfacegraphic_from_graphic(
+            graphic, gif->global_color_table);
         linkedlist_append(&surfacegraphics, linkedlist_new(g));
         if (graphic->extension && graphic->extension->delay_time != 0)
             break;
     }
     struct GIF_Graphic const *const graphic = (*start)->data;
-    /* TODO: PlainText graphics are skipped for now. */
-    if (graphic->is_img)
-    {
-        struct SurfaceGraphic *g = surfacegraphic_from_graphic(graphic);
-        linkedlist_append(&surfacegraphics, linkedlist_new(g));
-    }
+    struct SurfaceGraphic *g = surfacegraphic_from_graphic(
+        graphic, gif->global_color_table);
+    linkedlist_append(&surfacegraphics, linkedlist_new(g));
 
     /* Create the current frame, copying over data from the previous frame. */
     SDL_Surface *frame = SDL_CreateRGBSurfaceWithFormat(
