@@ -199,21 +199,21 @@ int MAIN(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    struct App G = app_new(&gif, filename);
+    struct App *G = app_new(&gif, filename);
 
     keybinds_init();
 
     SDL_TimerID frame_update_timer = SDL_AddTimer(10, timer_callback, NULL);
 
     bool screen_dirty = true;
-    while (G.view.running)
+    while (G->view.running)
     {
         if (screen_dirty)
         {
             imagetransform_clamp(
-                &G.view.transform, gif.width, gif.height, G.width, G.height);
-            app_clear_screen(&G);
-            app_draw(&G);
+                &G->view.transform, gif.width, gif.height, G->width, G->height);
+            app_clear_screen(G);
+            app_draw(G);
             screen_dirty = false;
         }
 
@@ -222,32 +222,32 @@ int MAIN(int argc, char *argv[])
         switch (event.type)
         {
         case SDL_QUIT:
-            viewer_quit(&G.view);
+            viewer_quit(&G->view);
             break;
 
         // User events are pushed by the frame update timer callback.
         case SDL_USEREVENT:
-            if (app_timer_increment(&G))
+            if (app_timer_increment(G))
                 screen_dirty = true;
             break;
 
         case SDL_WINDOWEVENT:
             screen_dirty = true;
             if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
-                app_resize(&G, event.window.data1, event.window.data2);
+                app_resize(G, event.window.data1, event.window.data2);
             break;
 
         case SDL_KEYDOWN:
             screen_dirty = true;
             for (size_t i = 0; i < actions_count; ++i)
                 if (action_ispressed(actions[i], event.key.keysym))
-                    actions[i].action(&G);
+                    actions[i].action(G);
             break;
 
         case SDL_MOUSEMOTION:
             if (event.motion.state & SDL_BUTTON_LMASK)
             {
-                viewer_translate(&G.view, event.motion.xrel, event.motion.yrel);
+                viewer_translate(&G->view, event.motion.xrel, event.motion.yrel);
                 screen_dirty = true;
             }
             break;
@@ -255,7 +255,7 @@ int MAIN(int argc, char *argv[])
         case SDL_MOUSEBUTTONDOWN:
             if (event.button.button == SDL_BUTTON_RIGHT)
             {
-                G.state_text_visible = true;
+                G->state_text_visible = true;
                 screen_dirty = true;
             }
             break;
@@ -263,15 +263,17 @@ int MAIN(int argc, char *argv[])
         case SDL_MOUSEBUTTONUP:
             if (event.button.button == SDL_BUTTON_RIGHT)
             {
-                G.state_text_visible = false;
+                G->state_text_visible = false;
                 screen_dirty = true;
             }
             break;
         }
+        if (menu_handle_event(G->menu, event))
+            screen_dirty = true;
     }
 
     SDL_RemoveTimer(frame_update_timer);
-    app_free(&G);
+    app_free(G);
     TTF_Quit();
     SDL_Quit();
 

@@ -17,6 +17,7 @@ target_sources(gifview PRIVATE
     args.c
     fontrenderer.c
     keybinds.c
+    menu.c
     sdlapp.c
     sdlgif.c
 )

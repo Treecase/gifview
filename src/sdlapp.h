@@ -22,6 +22,7 @@
 
 #include "sdlgif.h"
 #include "fontrenderer.h"
+#include "menu.h"
 #include "viewer/viewer.h"
 
 #include <SDL2/SDL.h>
@@ -39,6 +40,7 @@ struct App
     int width, height;
     struct Viewer view;
     GraphicList images, current_frame;
+    Menu *menu;
     /** Time since last frame (in 100ths of a second [centiseconds]). */
     double timer;
     /** Total length of the animation (in 100ths of a second). */
@@ -51,7 +53,7 @@ struct App
 
 
 /** Create SDL data. */
-struct App app_new(GIF const *gif, char const *path);
+struct App *app_new(GIF const *gif, char const *path);
 
 /** Free SDL data. */
 void app_free(struct App const *app);

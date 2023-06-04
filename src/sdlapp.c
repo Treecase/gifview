@@ -111,72 +111,83 @@ void _draw_text_overlay(struct App const *app)
 }
 
 
-struct App app_new(GIF const *gif, char const *path)
+void menu_cb_exit(void *data)
 {
-    struct App app;
+    struct App *app = data;
+    viewer_quit(&app->view);
+}
+
+struct App *app_new(GIF const *gif, char const *path)
+{
+    struct App *app = malloc(sizeof(struct App));
 
     char *windowtitle = NULL;
     sprintfa(&windowtitle, "%s - %s", GIFVIEW_PROGRAM_NAME, path);
-    app.window = SDL_CreateWindow(
+    app->window = SDL_CreateWindow(
         windowtitle,
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         gif->width, gif->height,
         SDL_WINDOW_RESIZABLE);
     free(windowtitle);
-    if (app.window == NULL)
+    if (app->window == NULL)
         fatal("Failed to create window: %s\n", SDL_GetError());
 
-    app.renderer = SDL_CreateRenderer(
-        app.window, -1, SDL_RENDERER_ACCELERATED);
-    if (app.renderer == NULL)
+    app->renderer = SDL_CreateRenderer(
+        app->window, -1, SDL_RENDERER_ACCELERATED);
+    if (app->renderer == NULL)
         fatal("Failed to create renderer -- %s\n", SDL_GetError());
 
-    app.bg_texture = NULL;
+    app->bg_texture = NULL;
 
-    app.paused_text = textrenderer_new(DEFAULT_FONT_PATH, DEFAULT_FONT_SIZE);
-    if (app.paused_text->font == NULL)
+    app->paused_text = textrenderer_new(DEFAULT_FONT_PATH, DEFAULT_FONT_SIZE);
+    if (app->paused_text->font == NULL)
+        error("Failed to load font: %s\n", TTF_GetError());
+    app->looping_text = textrenderer_new(DEFAULT_FONT_PATH, DEFAULT_FONT_SIZE);
+    if (app->looping_text->font == NULL)
+        error("Failed to load font: %s\n", TTF_GetError());
+    app->playback_speed_text = textrenderer_new(DEFAULT_FONT_PATH, DEFAULT_FONT_SIZE);
+    if (app->playback_speed_text->font == NULL)
         SDL_Log("Failed to load font: %s\n", TTF_GetError());
-    app.looping_text = textrenderer_new(DEFAULT_FONT_PATH, DEFAULT_FONT_SIZE);
-    if (app.looping_text->font == NULL)
-        SDL_Log("Failed to load font: %s\n", TTF_GetError());
-    app.playback_speed_text = textrenderer_new(DEFAULT_FONT_PATH, DEFAULT_FONT_SIZE);
-    if (app.playback_speed_text->font == NULL)
-        SDL_Log("Failed to load font: %s\n", TTF_GetError());
-    textrenderer_set_text(app.paused_text, app.renderer, "Paused ?");
-    textrenderer_set_text(app.looping_text, app.renderer, "Looping ?");
+    textrenderer_set_text(app->paused_text, app->renderer, "Paused ?");
+    textrenderer_set_text(app->looping_text, app->renderer, "Looping ?");
     textrenderer_set_text(
-        app.playback_speed_text, app.renderer, "Playback Speed ?");
+        app->playback_speed_text, app->renderer, "Playback Speed ?");
 
-    SDL_GetWindowSize(app.window, &app.width, &app.height);
+    SDL_GetWindowSize(app->window, &app->width, &app->height);
 
-    app.view.running = true,
-    app.view.shift_amount = 2.5 * BACKGROUND_GRID_SIZE,
+    app->view.running = true,
+    app->view.shift_amount = 2.5 * BACKGROUND_GRID_SIZE,
     /* In feh, zooming in 3 times doubles the image's size.  Zooming is
      * equivalent to exponentiation (eg. 3 zoom ins gives
      * `n*2*2*2 = n * 2^3`).  Therefore our equation is `2 = m^3`.  Solving for
      * m gives us our multiplier */
-    app.view.zoom_change_multiplier = 1.259921049894873,
-    app.view.transform.offset_x = 0;
-    app.view.transform.offset_y = 0;
-    app.view.transform.zoom = 1.0;
+    app->view.zoom_change_multiplier = 1.259921049894873,
+    app->view.transform.offset_x = 0;
+    app->view.transform.offset_y = 0;
+    app->view.transform.zoom = 1.0;
 
-    app.images = graphiclist_new_from_gif(app.renderer, *gif);
-    app.current_frame = app.images;
-    app.timer = 0;
-    app.full_time = 0;
-    for (GraphicList curr = app.images; curr->next != app.images; curr = curr->next)
+    app->images = graphiclist_new_from_gif(app->renderer, *gif);
+    app->current_frame = app->images;
+    app->timer = 0;
+    app->full_time = 0;
+    for (GraphicList curr = app->images; curr->next != app->images; curr = curr->next)
     {
         struct SDLGraphic const *const img = curr->data;
-        app.full_time += img->delay;
+        app->full_time += img->delay;
     }
-    app_set_paused(&app, false);
-    app_set_looping(&app, true);
-    app_set_playback_speed(&app, 1.0);
-    app.state_text_visible = false;
+    app_set_paused(app, false);
+    app_set_looping(app, true);
+    app_set_playback_speed(app, 1.0);
+    app->state_text_visible = false;
 
-    app.is_fullscreen = false;
+    app->is_fullscreen = false;
 
-    _generate_bg_grid(&app);
+    MenuBuilder *mb = menubuilder_new();
+    menubuilder_add_item(mb, (struct MenuItemDef){"Exit", menu_cb_exit, app});
+    app->menu = menu_new(mb, app->renderer);
+    menubuilder_free(mb);
+
+    _generate_bg_grid(app);
     return app;
 }
 
@@ -186,6 +197,7 @@ void app_free(struct App const *app)
     textrenderer_free(app->paused_text);
     textrenderer_free(app->looping_text);
     textrenderer_free(app->playback_speed_text);
+    menu_free(app->menu);
     SDL_DestroyTexture(app->bg_texture);
     SDL_DestroyRenderer(app->renderer);
     SDL_DestroyWindow(app->window);
@@ -245,6 +257,7 @@ void app_draw(struct App *app)
     struct SDLGraphic const *const img = app->current_frame->data;
     SDL_Rect const position = _get_current_frame_rect(app);
     SDL_RenderCopy(app->renderer, img->texture, NULL, &position);
+    menu_draw(app->menu);
     if (app->state_text_visible)
         _draw_text_overlay(app);
     SDL_RenderPresent(app->renderer);
