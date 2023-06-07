@@ -20,36 +20,28 @@
 #ifndef GIFVIEW_MENU_H
 #define GIFVIEW_MENU_H
 
+#include "menubutton.h"
+
 #include <stdbool.h>
 
 #include <SDL2/SDL.h>
 
 
-struct MenuItemDef
-{
-    char *label;
-    void (*callback)(void *);
-    void *callback_data;
-};
-
-typedef struct MenuBuilder_ MenuBuilder;
-
-MenuBuilder *menubuilder_new(void);
-void menubuilder_free(MenuBuilder *mb);
-void menubuilder_add_item(MenuBuilder *mb, struct MenuItemDef def);
-
-
 /** App Right-click menu. */
-typedef struct Menu_ Menu;
+typedef struct Menu Menu;
 
 /** Allocate a new Menu. */
-Menu *menu_new(MenuBuilder *def, SDL_Renderer *R);
+Menu *menu_new(SDL_Renderer *R);
 /** Free a Menu. */
 void menu_free(Menu *menu);
+
 /** Draw the Menu. */
 void menu_draw(Menu *menu);
 /** Handle Menu input events. */
 bool menu_handle_event(Menu *menu, SDL_Event event);
+
+/** Add a MenuButton to the menu. */
+void menu_add_button(Menu *menu, MenuButton *btn);
 /** Move Menu's top-left corner to (x, y). */
 void menu_move_to(Menu *menu, int x, int y);
 

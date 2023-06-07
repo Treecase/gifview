@@ -22,7 +22,7 @@
 
 #include "sdlgif.h"
 #include "fontrenderer.h"
-#include "menu.h"
+#include "menu/menu.h"
 #include "viewer/viewer.h"
 
 #include <SDL2/SDL.h>
@@ -41,6 +41,8 @@ struct App
     struct Viewer view;
     GraphicList images, current_frame;
     Menu *menu;
+    MenuButton *pause_btn;
+    MenuButton *looping_btn;
     /** Time since last frame (in 100ths of a second [centiseconds]). */
     double timer;
     /** Total length of the animation (in 100ths of a second). */

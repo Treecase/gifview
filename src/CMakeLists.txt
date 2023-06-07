@@ -17,12 +17,12 @@ target_sources(gifview PRIVATE
     args.c
     fontrenderer.c
     keybinds.c
-    menu.c
     sdlapp.c
     sdlgif.c
 )
 
 add_subdirectory(include)
+add_subdirectory(menu)
 add_subdirectory(viewer)
 
-target_link_libraries(gifview PRIVATE gif linkedlist util viewer)
+target_link_libraries(gifview PRIVATE gif linkedlist menu util viewer)

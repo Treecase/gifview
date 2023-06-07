@@ -117,6 +117,18 @@ void menu_cb_exit(void *data)
     viewer_quit(&app->view);
 }
 
+void menu_cb_toggle_pause(void *data)
+{
+    struct App *app = data;
+    app_set_paused(app, !app->view.paused);
+}
+
+void menu_cb_toggle_looping(void *data)
+{
+    struct App *app = data;
+    app_set_looping(app, !app->view.looping);
+}
+
 struct App *app_new(GIF const *gif, char const *path)
 {
     struct App *app = malloc(sizeof(struct App));
@@ -175,19 +187,28 @@ struct App *app_new(GIF const *gif, char const *path)
         struct SDLGraphic const *const img = curr->data;
         app->full_time += img->delay;
     }
+    app->state_text_visible = false;
+    app->is_fullscreen = false;
+
+    app->menu = menu_new(app->renderer);
+    app->pause_btn = menubutton_new(
+        " ", bind(menu_cb_toggle_pause, app), app->renderer);
+    app->looping_btn = menubutton_new(
+        " ", bind(menu_cb_toggle_looping, app), app->renderer);
+    menu_add_button(app->menu, app->pause_btn);
+    menu_add_button(app->menu, app->looping_btn);
+    menu_add_button(
+        app->menu,
+        menubutton_new(
+            "Exit",
+            bind(menu_cb_exit, app),
+            app->renderer));
+
+    _generate_bg_grid(app);
+
     app_set_paused(app, false);
     app_set_looping(app, true);
     app_set_playback_speed(app, 1.0);
-    app->state_text_visible = false;
-
-    app->is_fullscreen = false;
-
-    MenuBuilder *mb = menubuilder_new();
-    menubuilder_add_item(mb, (struct MenuItemDef){"Exit", menu_cb_exit, app});
-    app->menu = menu_new(mb, app->renderer);
-    menubuilder_free(mb);
-
-    _generate_bg_grid(app);
     return app;
 }
 
@@ -274,6 +295,7 @@ void app_resize(struct App *app, int width, int height)
 void app_set_paused(struct App *app, bool paused)
 {
     app->view.paused = paused;
+    menubutton_set_label(app->pause_btn, paused? "Unpause" : "Pause");
     textrenderer_set_text(
         app->paused_text,
         app->renderer,
@@ -283,6 +305,9 @@ void app_set_paused(struct App *app, bool paused)
 void app_set_looping(struct App *app, bool looping)
 {
     app->view.looping = looping;
+    menubutton_set_label(
+        app->looping_btn,
+        looping? "Looping: ON" : "Looping: OFF");
     textrenderer_set_text(
         app->looping_text,
         app->renderer,
