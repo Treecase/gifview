@@ -81,6 +81,9 @@ void app_draw(struct App *app);
 /** Resize the screen. */
 void app_resize(struct App *app, int width, int height);
 
+/** Show/hide player state overlay. */
+void app_show_state_overlay(struct App *app, bool visible);
+
 /** Set app paused state. */
 void app_set_paused(struct App *app, bool paused);
 

@@ -38,6 +38,23 @@
 #endif
 
 
+/** Values for SDL_UserEvent.code. */
+enum UserEventCode
+{
+    USEREVENTCODE_FRAMECHANGE,
+    USEREVENTCODE_HIDEAPPTEXT,
+};
+
+
+/** Temporarily display app state text. */
+void show_app_text_temporarily(struct App *app);
+
+/** Called every 10 milliseconds, to trigger frame changes in animated GIFs. */
+Uint32 timer_callback(Uint32 interval, void *param);
+/** Disables app text display. */
+Uint32 hideapptext_callback(Uint32 interval, void *param);
+
+
 /* ===[ Action Callbacks ]=== */
 /* General */
 void quit(struct App *G)
@@ -47,6 +64,11 @@ void quit(struct App *G)
 void fullscreen_toggle(struct App *G)
 {
     app_set_fullscreen(G, !G->is_fullscreen);
+}
+
+void show_player_state(struct App *G)
+{
+    app_show_state_overlay(G, !G->state_text_visible);
 }
 
 /* Zoom */
@@ -85,30 +107,37 @@ void scroll_left(struct App *G)
 void pause_toggle(struct App *G)
 {
     app_set_paused(G, !G->view.paused);
+    show_app_text_temporarily(G);
 }
 void loop_toggle(struct App *G)
 {
     app_set_looping(G, !G->view.looping);
+    show_app_text_temporarily(G);
 }
 void speed_down(struct App *G)
 {
     app_set_playback_speed(G, G->view.playback_speed - 0.1);
+    show_app_text_temporarily(G);
 }
 void speed_up(struct App *G)
 {
     app_set_playback_speed(G, G->view.playback_speed + 0.1);
+    show_app_text_temporarily(G);
 }
 void speed_half(struct App *G)
 {
     app_set_playback_speed(G, G->view.playback_speed * 0.5);
+    show_app_text_temporarily(G);
 }
 void speed_double(struct App *G)
 {
     app_set_playback_speed(G, G->view.playback_speed * 2.0);
+    show_app_text_temporarily(G);
 }
 void speed_reset(struct App *G)
 {
     app_set_playback_speed(G, 1.0);
+    show_app_text_temporarily(G);
 }
 void step_next(struct App *G)
 {
@@ -130,6 +159,7 @@ struct Action actions[] = {
     /* General */
     {"quit", quit, NULL, NULL, NULL},
     {"fullscreen_toggle", fullscreen_toggle, NULL, NULL, NULL},
+    {"show_player_state", show_player_state, NULL, NULL, NULL},
     /* Zoom */
     {"zoom_in", zoom_in, NULL, NULL, NULL},
     {"zoom_out", zoom_out, NULL, NULL, NULL},
@@ -156,16 +186,27 @@ struct Action actions[] = {
 size_t actions_count = sizeof(actions) / sizeof(*actions);
 
 
-/**
- * 1/100 second timer callback.  Used to trigger frame changes in animated
- * GIFs.
- */
+void show_app_text_temporarily(struct App *app)
+{
+    static Uint32 const DISPLAY_TIME_MILLISECONDS = 1000;
+    static bool init = false;
+    static SDL_TimerID timer;
+    app_show_state_overlay(app, true);
+    if (init)
+        SDL_RemoveTimer(timer);
+    init = true;
+    timer = SDL_AddTimer(
+        DISPLAY_TIME_MILLISECONDS,
+        hideapptext_callback,
+        app);
+}
+
 Uint32 timer_callback(Uint32 interval, void *param)
 {
     SDL_Event event = {
         .type = SDL_USEREVENT,
         .user = {
-            .code = 0,
+            .code = USEREVENTCODE_FRAMECHANGE,
             .data1 = NULL,
             .data2 = NULL,
             .type = SDL_USEREVENT
@@ -173,6 +214,21 @@ Uint32 timer_callback(Uint32 interval, void *param)
     };
     SDL_PushEvent(&event);
     return interval;
+}
+
+Uint32 hideapptext_callback(Uint32 interval, void *param)
+{
+    SDL_Event event = {
+        .type = SDL_USEREVENT,
+        .user = {
+            .code = USEREVENTCODE_HIDEAPPTEXT,
+            .data1 = NULL,
+            .data2 = NULL,
+            .type = SDL_USEREVENT
+        }
+    };
+    SDL_PushEvent(&event);
+    return 0;
 }
 
 
@@ -225,10 +281,18 @@ int MAIN(int argc, char *argv[])
             viewer_quit(&G->view);
             break;
 
-        // User events are pushed by the frame update timer callback.
         case SDL_USEREVENT:
-            if (app_timer_increment(G))
+            switch (event.user.code)
+            {
+            case USEREVENTCODE_FRAMECHANGE:
+                if (app_timer_increment(G))
+                    screen_dirty = true;
+                break;
+            case USEREVENTCODE_HIDEAPPTEXT:
+                app_show_state_overlay(G, false);
                 screen_dirty = true;
+                break;
+            }
             break;
 
         case SDL_WINDOWEVENT:
@@ -248,22 +312,6 @@ int MAIN(int argc, char *argv[])
             if (event.motion.state & SDL_BUTTON_LMASK)
             {
                 viewer_translate(&G->view, event.motion.xrel, event.motion.yrel);
-                screen_dirty = true;
-            }
-            break;
-
-        case SDL_MOUSEBUTTONDOWN:
-            if (event.button.button == SDL_BUTTON_RIGHT)
-            {
-                G->state_text_visible = true;
-                screen_dirty = true;
-            }
-            break;
-
-        case SDL_MOUSEBUTTONUP:
-            if (event.button.button == SDL_BUTTON_RIGHT)
-            {
-                G->state_text_visible = false;
                 screen_dirty = true;
             }
             break;

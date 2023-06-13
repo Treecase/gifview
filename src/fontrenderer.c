@@ -41,9 +41,20 @@ void textrenderer_set_text(
     struct TextRenderer *text, SDL_Renderer *renderer, char const *utf8text)
 {
     static SDL_Color const WHITE = {0xff, 0xff, 0xff, 0xff};
-    static SDL_Color const BLACK = {0x00, 0x00, 0x00, 0x00};
+    static SDL_Color const BLACK = {0x00, 0x00, 0x00, 0xff};
+    static int const OUTLINE = 2;
 
-    text->surface = TTF_RenderUTF8_Blended(text->font, utf8text, WHITE);
+    TTF_SetFontOutline(text->font, OUTLINE);
+    SDL_Surface *outlined = TTF_RenderUTF8_Blended(text->font, utf8text, BLACK);
+    TTF_SetFontOutline(text->font, 0);
+    SDL_Surface *base = TTF_RenderUTF8_Blended(text->font, utf8text, WHITE);
+
+    SDL_Rect rect = base->clip_rect;
+    rect.x += OUTLINE;
+    rect.y += OUTLINE;
+    SDL_BlitSurface(base, NULL, outlined, &rect);
+
+    text->surface = outlined;
     text->texture = SDL_CreateTextureFromSurface(renderer, text->surface);
     text->rect.h = text->surface->h;
     text->rect.w = text->surface->w;

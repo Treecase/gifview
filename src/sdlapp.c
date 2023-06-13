@@ -292,6 +292,11 @@ void app_resize(struct App *app, int width, int height)
     _generate_bg_grid(app);
 }
 
+void app_show_state_overlay(struct App *app, bool visible)
+{
+    app->state_text_visible = visible;
+}
+
 void app_set_paused(struct App *app, bool paused)
 {
     app->view.paused = paused;

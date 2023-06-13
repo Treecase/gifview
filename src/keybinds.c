@@ -48,6 +48,7 @@ static struct KeyDef const default_keybinds[] = {
     /* General */
     {"quit", {SDLK_ESCAPE, 0}, {SDLK_q, 0}, UNBOUND},
     {"fullscreen_toggle", {SDLK_f}, UNBOUND, UNBOUND},
+    {"show_player_state", {SDLK_o}, UNBOUND, UNBOUND},
     /* Zoom */
     {"zoom_in", {SDLK_UP, 0}, {SDLK_KP_PLUS, 0}, UNBOUND},
     {"zoom_out", {SDLK_DOWN, 0}, {SDLK_KP_MINUS,0}, UNBOUND},
