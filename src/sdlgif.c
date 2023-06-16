@@ -25,6 +25,9 @@
 #include <SDL_ttf.h>
 
 
+#define MIN(a, b)   (a < b? a : b)
+
+
 /**
  * Interstitial structure used to construct the full frames contained in the
  * SDLGraphic struct.  SDL representation of a GIF_Graphic.
@@ -113,12 +116,13 @@ int fit_font_to_rect(int width, int height)
 
     float const h_points = width_inches * POINTS_PER_INCH;
     float const v_points = height_inches * POINTS_PER_INCH;
-    return v_points;
+    return MIN(v_points, h_points);
 }
 
 /** Create a SurfaceGraphic from a GIF_PlainTextExt. */
 struct SurfaceGraphic *surfacegraphic_from_plaintext(
-    struct GIF_PlainTextExt const *restrict plaintext, struct GIF_ColorTable const *restrict gct)
+    struct GIF_PlainTextExt const *restrict plaintext,
+    struct GIF_ColorTable const *restrict gct)
 {
     struct SurfaceGraphic *out = malloc(sizeof(*out));
     out->rect.x = plaintext->tg_left;
@@ -136,9 +140,13 @@ struct SurfaceGraphic *surfacegraphic_from_plaintext(
         error("TTF_OpenFont -- %s\n", TTF_GetError());
 
     // TODO: Sometimes draws boxes, maybe need to draw characters individually?
+    /* Using TTF_RenderUTF8_Solid_Wrapped here because we need to stick to the
+     * given palette colors. */
     char *text = strndup(plaintext->data, plaintext->data_size);
-    out->surface = TTF_RenderUTF8_Shaded_Wrapped(
-        font, plaintext->data, fg, bg, out->rect.w);
+    out->surface = TTF_RenderUTF8_Solid_Wrapped(
+        font, plaintext->data, fg, out->rect.w);
+    SDL_SetColorKey(out->surface, SDL_FALSE, 0);
+    SDL_SetPaletteColors(out->surface->format->palette, &bg, 0, 1);
     free(text);
     if (!out->surface)
         error("TTF_RenderUTF8_Shaded_Wrapped -- %s\n", TTF_GetError());
@@ -164,7 +172,9 @@ struct SurfaceGraphic *surfacegraphic_from_graphic(
     if (graphic->extension && graphic->extension->transparent_color_flag)
     {
         SDL_SetColorKey(
-            out->surface, SDL_TRUE, graphic->extension->transparent_color_idx);
+            out->surface,
+            SDL_TRUE,
+            graphic->extension->transparent_color_idx);
     }
     return out;
 }
@@ -201,7 +211,11 @@ void graphic_free(struct SDLGraphic *graphic)
  * last processed graphic.  NEXTFRAME will be updated to contain the basis for
  * the next frame.
  */
-SDL_Surface *_make_frame(LinkedList const **start, SDL_Surface **nextframe, GIF const *gif)
+SDL_Surface *
+_make_frame(
+    LinkedList const **restrict start,
+    SDL_Surface **restrict nextframe,
+    GIF const *restrict gif)
 {
     LinkedList const *const start_orig = *start;
     LinkedList *surfacegraphics = NULL;
