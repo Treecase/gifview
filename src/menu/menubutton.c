@@ -31,10 +31,10 @@ static SDL_Color const HOVERED_COLOR = {.r=0x7F, .g=0x7F, .b=0x7F, .a=0xFF};
 
 struct MenuButton
 {
-    // Rect for overlap detection.
+    /* Rect for overlap detection. */
     SDL_Rect rect;
-    // Rect for pasting the texture. x & y are synced with RECT, offset by
-    // INNER_PADDING
+    /* Rect for pasting the texture. x & y are synced with RECT, offset by
+     * INNER_PADDING */
     SDL_Rect visrect;
     SDL_Renderer *renderer;
     SDL_Texture *text;

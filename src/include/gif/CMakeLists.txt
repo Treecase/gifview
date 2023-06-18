@@ -4,5 +4,9 @@ add_library(gif STATIC
     gif-load.c
     lzw.c
 )
-target_link_libraries(gif PUBLIC linkedlist)
-target_link_libraries(gif PRIVATE util)
+target_link_libraries(gif
+    PUBLIC
+        linkedlist
+    PRIVATE
+        util
+)

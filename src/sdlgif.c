@@ -106,7 +106,6 @@ int fit_font_to_rect(int width, int height)
     if (SDL_GetDisplayDPI(0, NULL, &hdpi, &vdpi) != 0)
     {
         error("SDL_GetDisplayDPI -- %s\n", SDL_GetError());
-        // we'll assume 72 dpi
         hdpi = 72.0f;
         vdpi = 72.0f;
     }
@@ -139,7 +138,8 @@ struct SurfaceGraphic *surfacegraphic_from_plaintext(
     if (!font)
         error("TTF_OpenFont -- %s\n", TTF_GetError());
 
-    // TODO: Sometimes draws boxes, maybe need to draw characters individually?
+    /* TODO:
+     * Sometimes draws boxes, maybe need to draw characters individually? */
     /* Using TTF_RenderUTF8_Solid_Wrapped here because we need to stick to the
      * given palette colors. */
     char *text = strndup(plaintext->data, plaintext->data_size);

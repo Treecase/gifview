@@ -267,7 +267,7 @@ void app_next_frame(struct App *app)
 void app_previous_frame(struct App *app)
 {
     GraphicList current = app->current_frame;
-    // TODO: Switch to doubly-linked lists to simplify.
+    /* TODO: Switch to doubly-linked lists to simplify. */
     while (app->current_frame->next != current)
         app_next_frame(app);
     app->timer = 0;

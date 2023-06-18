@@ -1,6 +1,7 @@
 
 # Use fontconfig to get path to default font
 exec_program(fc-match ARGS --format=%{file} OUTPUT_VARIABLE DEFAULT_FONT_PATH)
+# Use fontconfig to get path to default monospace font
 exec_program(fc-match
     ARGS
         mono
